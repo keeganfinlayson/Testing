@@ -115,7 +115,7 @@ function drawPlayer(x,t,a){let state=rigState(t),h=a.h,foot=verticalY(state.jump
 const physics={g:.28,dt:1/300,radius:.042,hoopX:2.4,hoopY:.72,rimHalf:.14,boardX:2.57,boardBottom:.70,boardTop:1.04,boardDepth:.23,boardThickness:.018,rimTube:.012,netDepth:.20};
 let flightCache=null;
 function launchSlope(r,y){let values=[];for(let i=0;i<12;i++){let t=r-.022+i*.002,ys=intersections(t);if(ys.length)values.push({t,y:ys.reduce((a,b)=>Math.abs(a-y)<Math.abs(b-y)?a:b)})}if(values.length<3)return 0;let mt=values.reduce((a,p)=>a+p.t,0)/values.length,my=values.reduce((a,p)=>a+p.y,0)/values.length;return values.reduce((a,p)=>a+(p.t-mt)*(p.y-my),0)/values.reduce((a,p)=>a+(p.t-mt)**2,0)/10}
-function launchVector(r,y,bounces){let speed=.61+.14*Math.min(7,bounces),angle=Math.atan(launchSlope(r,y)*2.2);angle=Math.max(-Math.PI*.44,Math.min(Math.PI*.44,angle));return {speed,angle,vx:speed*Math.cos(angle),vy:speed*Math.sin(angle)}}
+function launchVector(r,y,bounces){const slope=Math.abs(launchSlope(r,y)),speed=Math.max(.67,Math.min(1.014,.67+.043*slope)),angle=Math.PI/4;return {speed,angle,vx:speed/Math.SQRT2,vy:speed/Math.SQRT2}}
 function launchReady(){let a=basketballAnalysis(),end=strokes.length?Math.max(...strokes.flatMap(s=>s.pts.map(p=>p.x))):0;return a.release!==null&&end>=a.release-.001&&!a.failure&&!a.missing&&a.bounces>=2}
 function flightSimulation(){let a=basketballAnalysis();if(!launchReady())return null;if(flightCache?.plan===a)return flightCache;let r=a.release,ys=intersections(r);if(!ys.length)ys=intersections(r-.0005);let balls=ys.map(y=>({x:0,y,vx:launchVector(r,y,a.bounces).vx,vy:launchVector(r,y,a.bounces).vy,z:0,vz:0,spin:0,scored:false,boardHits:0,rimHits:0})),frames=[],time=r*10;
  frames.push({t:r,balls:balls.map(b=>({...b}))});while(time<10-physics.dt/2){let dt=physics.dt;for(let b of balls){let oldX=b.x,oldY=b.y;b.vy-=physics.g*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.spin+=b.vx*dt*10;
@@ -395,7 +395,23 @@ function frame(ctx,anchor,ground,span,t,ballHeight,pass,releaseHeight=.68){
 }
 return {draw:frame,inspect:(t,y)=>({t,y,phase:position(t,y).type,shotTime:position(t,y).u})};
 })();
-function drawBasketball(){let {w,h}=dim(beach),a=world(),t=progress,plan=basketballAnalysis(),flight=flightAt(t),scale=a.h,anchor=a.x+14,camera=flight?flight.balls[0]?.x||0:0;
+let basketballCameraCache=null;
+function basketballCameraX(flight){
+ if(!flight)return 0;
+ const sim=flightSimulation();
+ if(!sim)return flight.balls[0]?.x||0;
+ if(!basketballCameraCache||basketballCameraCache.sim!==sim){
+   let impact=null;
+   for(let i=1;i<sim.frames.length;i++){
+     const prev=sim.frames[i-1].balls[0],cur=sim.frames[i].balls[0];
+     if(prev&&cur&&prev.y>physics.radius+1e-5&&cur.y<=physics.radius+1e-5){impact={t:sim.frames[i].t,x:cur.x};break}
+   }
+   basketballCameraCache={sim,impact};
+ }
+ const impact=basketballCameraCache.impact;
+ return impact&&flight.t>=impact.t?impact.x:(flight.balls[0]?.x||0);
+}
+function drawBasketball(){let {w,h}=dim(beach),a=world(),t=progress,plan=basketballAnalysis(),flight=flightAt(t),scale=a.h,anchor=a.x+14,camera=basketballCameraX(flight);
  const wx=x=>anchor+(x-camera)*scale,wy=y=>verticalY(y,h);bc.clearRect(0,0,w,h);bc.fillStyle='#f0f4f7';bc.fillRect(0,0,w,h);bc.save();bc.beginPath();bc.rect(a.left,a.top,a.right-a.left,a.h+20);bc.clip();
  let scroll=flight?camera*scale:t*a.h*.7;if(!drawGym(a,scroll)){ bc.fillStyle='#dde5eb';bc.fillRect(a.left,a.top,a.right-a.left,a.h);
  for(let i=-8;i<30;i++){let x=a.left+i*90-scroll*.35;bc.strokeStyle='#c7d2da';bc.lineWidth=1;segment({x,y:a.top},{x,y:a.bottom-30},bc)}
