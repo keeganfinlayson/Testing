@@ -1,10 +1,30 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.7</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.8</title><style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#19283c;background:#f4f6fa}*{box-sizing:border-box}body{margin:0}main{max-width:1120px;margin:auto;padding:24px}h1{font-size:1.6rem;margin:0}p{color:#546579}header{margin-bottom:18px}.panel{background:white;border:1px solid #dce3ec;border-radius:14px;padding:18px;margin-bottom:16px}.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end}label{font-size:1rem;font-weight:750;display:grid;gap:5px}input,select,button{font:inherit;border:1px solid #b8c5d5;border-radius:8px;padding:9px 11px;background:white;color:#19283c}input{width:175px}button{cursor:pointer}button:hover{border-color:#466ca5}button.active{background:#204f8a;color:white;border-color:#204f8a}.tabs{display:flex;gap:7px;flex-wrap:wrap}.tabs button{flex:1;min-width:135px;font-size:1.04rem;font-weight:700}.bar{font-size:1.05rem;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.muted{color:#66768a;font-size:.88rem}.math{font-size:1.5rem;font-weight:650;line-height:1.55;overflow-wrap:anywhere}.error{color:#a11d2c;min-height:1.3em}.stage{overflow:auto;min-height:280px;padding:16px 6px}.gridModel{display:grid;gap:4px;min-width:0;width:100%;max-width:850px;margin:auto}.cell,.head{display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;min-width:55px;min-height:55px;border-radius:3px}.head{font-weight:800;font-size:1.3rem;background:#edf1f7}.cell{border:1px solid #7d9dbb;background:#d9eaf9;font-size:1.45rem;font-weight:800;position:relative;flex-direction:column;gap:8px}.cell small{color:#283e52;font-size:1.03rem;font-weight:750}.tileStage{display:flex;justify-content:center;align-items:center;min-height:320px}.tileGrid{display:grid;border:2px solid #52667e;background:#fff;gap:1px;max-width:100%;overflow:auto}.tile{display:flex;align-items:center;justify-content:center;border:1px solid #597d9b;background:#b9d9f5;color:#163b62;font-weight:650;font-size:.85rem;min-width:23px;min-height:23px}.tile.x2{background:#9fc7ed}.tile.x{background:#c3e4d4;color:#174b36}.tile.unit{background:#f8e3b4;color:#6c4d15}.tile.neg{background:#f4c3c3;color:#812b2b}.tileNote{font-size:.85rem;color:#586a7d;text-align:center;margin-top:8px}.algorithm{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(1.5rem,2.5vw,2rem);font-weight:750;line-height:1.55;display:table;margin:12px auto}.alg-line{white-space:pre;text-align:right;padding:0 14px;min-width:7ch}.alg-rule{height:0;border-top:2.5px solid #273d53;margin:3px 0}.steps{font-size:1.05rem;font-weight:600;background:#f7f9fc;border:1px solid #e3e9f0;border-radius:9px;padding:13px 16px;line-height:1.8}.examples{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.examples button{font-size:.85rem;padding:6px 9px}.pill{font-size:.78rem;background:#eef3fa;padding:4px 8px;border-radius:20px}.sr{position:absolute;left:-9999px}@media(max-width:600px){main{padding:12px}.panel{padding:12px}.tabs button{min-width:calc(50% - 7px)}input{width:135px}.stage{padding:8px 0}}
-</style></head><body><main><header><h1>Area Model Studio <span class="pill">v2.7 · under development</span></h1><p>One multiplication problem, four connected representations.</p></header>
+</style></head><body><main><header><h1>Area Model Studio <span class="pill">v2.8 · under development</span></h1><p>One multiplication problem, four connected representations.</p></header>
 <section class="panel"><div class="controls"><label>First factor<input id="a" value="34" aria-label="First factor"></label><label>Second factor<input id="b" value="26" aria-label="Second factor"></label></div><div class="error" id="error" role="alert"></div></section>
 <section class="panel"><div class="tabs" role="tablist" aria-label="Representation"><button class="active" data-mode="units" role="tab" aria-selected="true">Unit squares</button><button data-mode="squares" role="tab" aria-selected="false">Squares</button><button data-mode="tiles" role="tab" aria-selected="false">Algebra tiles</button><button data-mode="numeric" role="tab" aria-selected="false">Representative / numeric</button><button data-mode="algorithm" role="tab" aria-selected="false">Algorithm</button></div><div class="bar" style="margin-top:14px"><strong id="heading">Squares</strong><span class="muted" id="description"></span></div><div class="stage" id="stage"></div><div class="steps" id="steps"></div></section></main>
 <script>
 const MODEL_PALETTE={cols:[[226,185,128],[140,173,201],[156,185,156],[184,166,194]],rows:[[218,157,145],[148,197,166],[151,169,194],[209,183,145]]};
+
+const toneInk=(kind,index)=>'rgb('+MODEL_PALETTE[kind][index%MODEL_PALETTE[kind].length].map(v=>Math.round(v*.58)).join(',')+')';
+function drawDimensionArrows(svg,ns,origin,unit,top,left){
+ const svgEl=(tag,attrs)=>{const e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));svg.appendChild(e);return e};
+ const arrow=(x1,y1,x2,y2)=>{const isHorizontal=y1===y2;const lo=4,hi=8,half=3.5;
+  svgEl('line',{x1,y1,x2,y2,stroke:'#33485d','stroke-width':1.8});
+  if(isHorizontal){
+   svgEl('path',{d:'M'+(x1+hi)+' '+(y1-half)+'L'+x1+' '+y1+'L'+(x1+hi)+' '+(y1+half),fill:'none',stroke:'#33485d','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});
+   svgEl('path',{d:'M'+(x2-hi)+' '+(y2-half)+'L'+x2+' '+y2+'L'+(x2-hi)+' '+(y2+half),fill:'none',stroke:'#33485d','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});
+  }else{
+   svgEl('path',{d:'M'+(x1-half)+' '+(y1+hi)+'L'+x1+' '+y1+'L'+(x1+half)+' '+(y1+hi),fill:'none',stroke:'#33485d','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});
+   svgEl('path',{d:'M'+(x2-half)+' '+(y2-hi)+'L'+x2+' '+y2+'L'+(x2+half)+' '+(y2-hi),fill:'none',stroke:'#33485d','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});
+  }
+ };
+ const label=(x,y,value,color)=>{const e=svgEl('text',{x,y,'text-anchor':'middle','dominant-baseline':'central','font-size':19,'font-weight':850,fill:color});e.textContent=textTerm(value)};
+ let x=origin;
+ top.forEach((part,ci)=>{const len=part.c*unit;arrow(x+2,origin-12,x+len-2,origin-12);label(x+len/2,origin-34,part,toneInk('cols',ci));x+=len});
+ let y=origin;
+ left.forEach((part,ri)=>{const len=part.c*unit;arrow(origin-12,y+2,origin-12,y+len-2);label(origin-37,y+len/2,part,toneInk('rows',ri));y+=len});
+}
 const tone=(kind,index)=>'rgb('+MODEL_PALETTE[kind][index%MODEL_PALETTE[kind].length].join(',')+')';
 const mixedTone=(ri,ci)=>'rgb('+MODEL_PALETTE.cols[ci%MODEL_PALETTE.cols.length].map((v,k)=>Math.round(.52*v+.48*MODEL_PALETTE.rows[ri%MODEL_PALETTE.rows.length][k])).join(',')+')';
 const $=id=>document.getElementById(id);let mode='units',current=null;
@@ -20,73 +40,61 @@ function cell(t){return safe(textTerm(t))}
 function render(){if(!current)return;let {p,q,top,left,r}=current;let hide=false,heading={units:'Unit squares',squares:'Unit squares / partitioned area',tiles:'Algebra tiles',numeric:'Representative / numeric area model',algorithm:'Multiplication algorithm'};let descriptions={units:'Uniform 1 × 1 grid, no place-value boundaries',squares:'Area shown with unit squares where practical',tiles:'x², x, and unit regions',numeric:'Place-value partitions and partial products',algorithm:'Written multiplication or symbolic distribution'};$('heading').textContent=heading[mode];$('description').textContent=descriptions[mode];$('stage').innerHTML='';if(mode==='units')drawUnits(top,left);if(mode==='numeric')drawNumeric(top,left,hide);if(mode==='squares')drawSquares(top,left,hide);if(mode==='tiles')drawTiles(top,left,hide);if(mode==='algorithm')drawAlgorithm(p,q,top,left,hide);let terms=left.flatMap(l=>top.map(t=>product(l,t)));let expansion=terms.map((t,i)=> (i?' + ':'')+'('+textTerm(t)+')').join('').replace(/\+ \(−/g,'− (');$('steps').innerHTML='<strong>Distributive property</strong><div class="math">('+safe(polyText(p))+')('+safe(polyText(q))+') = '+safe(left.map(l=>top.map(t=>textTerm(l)+'('+textTerm(t)+')').join(' + ')).join(' + '))+'</div>'+(hide?'<div class="muted">Reveal products and totals to complete the calculation.</div>':'<div class="math">Partial products: '+safe(terms.map(textTerm).join(' + ').replace(/\+ −/g,'− '))+'</div><div class="math"><strong>Total: '+safe(polyText(r))+'</strong></div>')}
 function drawNumeric(top,left,hide){
  const grid=document.createElement('div');grid.className='gridModel';
- const factorWeight=arr=>arr.map(t=>Math.max(1,Math.sqrt(Math.abs(t.c))));
- const widths=factorWeight(top),heights=factorWeight(left);
- grid.style.gridTemplateColumns='minmax(64px,70px) '+widths.map(v=>'minmax(0,'+v+'fr)').join(' ');
- grid.style.gridTemplateRows='60px '+heights.map(v=>Math.max(90,v*30)+'px').join(' ');
+ grid.style.minWidth=(90+top.length*185)+'px';
+ grid.style.gridTemplateColumns='minmax(75px,90px) '+top.map(()=> 'minmax(185px,1fr)').join(' ');
+ grid.style.gridTemplateRows='68px '+left.map(()=> 'minmax(112px,auto)').join(' ');
  const add=(cls,txt,sub,bg)=>{
-  const d=document.createElement('div');d.className=cls;
-  if(bg)d.style.backgroundColor=bg;
-  if(cls==='cell'){const strong=document.createElement('strong');strong.textContent=txt;d.appendChild(strong);
-   if(sub){const small=document.createElement('small');small.textContent=sub;d.appendChild(small)}}
-  else d.textContent=txt;
-  grid.appendChild(d);return d;
+   const d=document.createElement('div');d.className=cls;
+   if(bg)d.style.backgroundColor=bg;
+   if(cls==='cell'){const strong=document.createElement('strong');strong.textContent=txt;d.appendChild(strong);
+     if(sub){const small=document.createElement('small');small.textContent=sub;d.appendChild(small)}}
+   else d.textContent=txt;
+   grid.appendChild(d);
  };
- add('head','·',null,'#e9edf1');
- top.forEach((t,ci)=>add('head',textTerm(t),null,tone('cols',ci)));
- left.forEach((l,ri)=>{
-   add('head',textTerm(l),null,tone('rows',ri));
-   top.forEach((t,ci)=>add('cell',hide?'?':textTerm(product(l,t)),textTerm(l)+'('+textTerm(t)+')',mixedTone(ri,ci)));
- });
+ add('head','·',null,'#e9edf1');top.forEach((t,ci)=>add('head',textTerm(t),null,tone('cols',ci)));
+ left.forEach((l,ri)=>{add('head',textTerm(l),null,tone('rows',ri));top.forEach((t,ci)=>add('cell',hide?'?':textTerm(product(l,t)),textTerm(l)+'('+textTerm(t)+')',mixedTone(ri,ci)))});
  $('stage').appendChild(grid);
 }
-function drawUnits(top,left){let w=top.reduce((s,t)=>s+t.c,0),h=left.reduce((s,t)=>s+t.c,0);if(!top.every(t=>t.pow===0&&t.c>=0)||!left.every(t=>t.pow===0&&t.c>=0)){drawNumeric(top,left,false);let n=document.createElement('p');n.className='tileNote';n.textContent='Unit squares require nonnegative whole-number factors. The numeric area model is shown for this expression.';$('stage').appendChild(n);return}if(w===0||h===0){$('stage').textContent='Zero area: '+w+' × '+h+' = 0';return}let holder=document.createElement('div');holder.style.cssText='overflow:auto;max-width:100%;text-align:center';let unit=Math.min(27,Math.max(3,Math.floor(780/Math.max(w,h))));let svgNS='http://www.w3.org/2000/svg',svg=document.createElementNS(svgNS,'svg');const pad=42;svg.setAttribute('width',String(w*unit+pad+2));svg.setAttribute('height',String(h*unit+pad+2));svg.setAttribute('viewBox',`0 0 ${w*unit+pad+2} ${h*unit+pad+2}`);svg.style.cssText='max-width:none;display:block;margin:auto;background:white';let path=document.createElementNS(svgNS,'path'),d=[];for(let x=0;x<=w;x++)d.push(`M${1+x*unit} 1V${1+h*unit}`);for(let y=0;y<=h;y++)d.push(`M1 ${1+y*unit}H${1+w*unit}`);path.setAttribute('d',d.join(' '));path.setAttribute('fill','none');path.setAttribute('stroke','#7898b5');path.setAttribute('stroke-width','0.8');path.setAttribute('transform','translate(40 40)');svg.appendChild(path);
- const xCuts=[0],yCuts=[0];top.forEach(t=>xCuts.push(xCuts.at(-1)+t.c));left.forEach(t=>yCuts.push(yCuts.at(-1)+t.c));
- const rect=(x,y,width,height,fill)=>{const r=document.createElementNS(svgNS,'rect');r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',width);r.setAttribute('height',height);r.setAttribute('fill',fill);svg.insertBefore(r,path)};
+function drawUnits(top,left){
+ const w=top.reduce((s,t)=>s+t.c,0),h=left.reduce((s,t)=>s+t.c,0);
+ if(!top.every(t=>t.pow===0&&t.c>=0)||!left.every(t=>t.pow===0&&t.c>=0)){drawNumeric(top,left,false);return}
+ if(w===0||h===0){$('stage').textContent='Zero area: '+w+' × '+h+' = 0';return}
+ const holder=document.createElement('div');holder.style.cssText='overflow:auto;max-width:100%;text-align:center';
+ const unit=Math.min(25,Math.max(3,Math.floor(690/Math.max(w,h))));
+ const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),origin=72;
+ svg.setAttribute('width',String(w*unit+origin+3));svg.setAttribute('height',String(h*unit+origin+3));
+ svg.setAttribute('viewBox','0 0 '+(w*unit+origin+3)+' '+(h*unit+origin+3));svg.style.cssText='display:block;margin:auto;max-width:none';
+ const cuts=arr=>{let res=[0];arr.forEach(t=>res.push(res.at(-1)+t.c));return res};
+ const xc=cuts(top),yc=cuts(left);
+ const add=(tag,attrs)=>{let e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));svg.appendChild(e);return e};
  for(let ri=0;ri<left.length;ri++)for(let ci=0;ci<top.length;ci++)
-   rect(40+xCuts[ci]*unit+1,40+yCuts[ri]*unit+1,top[ci].c*unit,left[ri].c*unit,mixedTone(ri,ci));
- top.forEach((t,ci)=>rect(40+xCuts[ci]*unit+1,4,t.c*unit,30,tone('cols',ci)));
- left.forEach((t,ri)=>rect(4,40+yCuts[ri]*unit+1,30,t.c*unit,tone('rows',ri)));
- const ns='http://www.w3.org/2000/svg';
- const txt=(x,y,str)=>{let e=document.createElementNS(ns,'text');e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('text-anchor','middle');e.setAttribute('font-size','18');e.setAttribute('font-weight','800');e.setAttribute('fill','#243b51');e.textContent=str;svg.appendChild(e)};
- let xx=40;top.forEach(t=>{txt(xx+t.c*unit/2,25,textTerm(t));xx+=t.c*unit});
- let yy=40;left.forEach(t=>{txt(19,yy+t.c*unit/2+6,textTerm(t));yy+=t.c*unit});
- holder.appendChild(svg);$('stage').appendChild(holder);let n=document.createElement('p');n.className='tileNote';n.textContent=`${w} columns × ${h} rows = ${w*h} unit squares. Every grid line has identical weight.`;$('stage').appendChild(n)}
+   add('rect',{x:origin+xc[ci]*unit,y:origin+yc[ri]*unit,width:top[ci].c*unit,height:left[ri].c*unit,fill:mixedTone(ri,ci)});
+ const d=[];for(let x=0;x<=w;x++)d.push('M'+(origin+x*unit)+' '+origin+'v'+(h*unit));
+ for(let y=0;y<=h;y++)d.push('M'+origin+' '+(origin+y*unit)+'h'+(w*unit));
+ add('path',{d:d.join(' '),fill:'none',stroke:'#8197ad','stroke-width':.8});
+ drawDimensionArrows(svg,ns,origin,unit,top,left);
+ holder.appendChild(svg);$('stage').appendChild(holder);
+ const note=document.createElement('p');note.className='tileNote';note.textContent=w+' columns × '+h+' rows = '+(w*h)+' unit squares. Every grid line has identical weight.';$('stage').appendChild(note);
+}
 function drawSquares(top,left,hide){
  const numeric=top.every(t=>t.pow===0&&t.c>=0)&&left.every(t=>t.pow===0&&t.c>=0);
  if(!numeric){drawNumeric(top,left,hide);return}
- const w=top.reduce((a,t)=>a+t.c,0),h=left.reduce((a,t)=>a+t.c,0);
+ const w=top.reduce((s,t)=>s+t.c,0),h=left.reduce((s,t)=>s+t.c,0);
  if(!w||!h){$('stage').textContent='Zero area: '+w+' × '+h+' = 0';return}
- // One contiguous region per place-value partial product, not per ten.
- const unit=Math.max(2,Math.min(19,Math.floor(690/Math.max(w,h))));
- const pad=52,ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
- svg.setAttribute('width',w*unit+pad+2);svg.setAttribute('height',h*unit+pad+2);
- svg.setAttribute('viewBox',`0 0 ${w*unit+pad+2} ${h*unit+pad+2}`);
- svg.style.cssText='display:block;margin:auto;max-width:none';
- const el=(tag,attrs)=>{const e=document.createElementNS(ns,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);svg.appendChild(e);return e};
- const label=(x,y,t,sz=14)=>{const e=el('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle','font-size':sz,'font-weight':800,fill:'#243b51'});e.textContent=t};
- 
- let y=pad;
- left.forEach((row,ri)=>{
-  let x=pad;
-  top.forEach((col,ci)=>{
-   const ww=col.c*unit,hh=row.c*unit;
-   el('rect',{x,y,width:ww,height:hh,fill:mixedTone(ri,ci)});
-   if(unit>=4){
-    const d=[];
-    for(let k=1;k<col.c;k++)d.push(`M${x+k*unit} ${y}v${hh}`);
-    for(let k=1;k<row.c;k++)d.push(`M${x} ${y+k*unit}h${ww}`);
-    el('path',{d:d.join(' '),fill:'none',stroke:'#a4b8c5','stroke-width':0.65});
-   }
-   el('rect',{x,y,width:ww,height:hh,fill:'none',stroke:'#344d66','stroke-width':2.2});
-   if(ww>=34&&hh>=28)label(x+ww/2,y+hh/2,hide?'?':String(col.c*row.c),Math.max(14,Math.min(23,Math.min(ww/2.9,hh/2.9))));
-   x+=ww;
-  });
-  el('rect',{x:3,y,width:pad-9,height:row.c*unit,fill:tone('rows',ri)});
-  label(pad-22,y+row.c*unit/2,String(row.c),18);
-  y+=row.c*unit;
- });
- let x=pad;top.forEach((col,ci)=>{el('rect',{x,y:3,width:col.c*unit,height:pad-9,fill:tone('cols',ci)});label(x+col.c*unit/2,pad-22,String(col.c),18);x+=col.c*unit});
+ const unit=Math.max(2,Math.min(20,Math.floor(690/Math.max(w,h)))),origin=72,ns='http://www.w3.org/2000/svg';
+ const svg=document.createElementNS(ns,'svg');svg.setAttribute('width',w*unit+origin+3);svg.setAttribute('height',h*unit+origin+3);
+ svg.setAttribute('viewBox','0 0 '+(w*unit+origin+3)+' '+(h*unit+origin+3));svg.style.cssText='display:block;margin:auto;max-width:none';
+ const add=(tag,attrs)=>{let e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));svg.appendChild(e);return e};
+ let y=origin;
+ left.forEach((row,ri)=>{let x=origin;top.forEach((col,ci)=>{
+  const ww=col.c*unit,hh=row.c*unit;
+  add('rect',{x,y,width:ww,height:hh,fill:mixedTone(ri,ci)});
+  if(unit>=4){const d=[];for(let j=1;j<col.c;j++)d.push('M'+(x+j*unit)+' '+y+'v'+hh);for(let j=1;j<row.c;j++)d.push('M'+x+' '+(y+j*unit)+'h'+ww);add('path',{d:d.join(' '),fill:'none',stroke:'#96acb9','stroke-width':.65})}
+  add('rect',{x,y,width:ww,height:hh,fill:'none',stroke:'#344d66','stroke-width':2.2});
+  if(ww>=34&&hh>=28){const t=add('text',{x:x+ww/2,y:y+hh/2,'dominant-baseline':'central','text-anchor':'middle',fill:'#263b50','font-size':Math.max(14,Math.min(25,Math.min(ww/2.5,hh/2.5))),'font-weight':850});t.textContent=hide?'?':String(row.c*col.c)}
+  x+=ww;
+ });y+=row.c*unit});
+ drawDimensionArrows(svg,ns,origin,unit,top,left);
  const wrap=document.createElement('div');wrap.style.cssText='overflow:auto;max-width:100%';wrap.appendChild(svg);$('stage').appendChild(wrap);
  const note=document.createElement('p');note.className='tileNote';note.textContent='Contiguous place-value regions: '+left.map(textTerm).join(' + ')+' by '+top.map(textTerm).join(' + ')+'. Each region shows its partial product.';$('stage').appendChild(note);
 }
@@ -104,12 +112,12 @@ function drawTiles(top,left,hide){
   root.style.gridTemplateRows=edge+'px '+sep+'px '+rows.map(r=>r*u+'px').join(' ');
   const colors={hundred:'#a9cbed',ten:'#c4e2d7',one:'#f5d99c'};
   const place=(e,row,col,rowSpan=1,colSpan=1)=>{e.style.gridRow=row+' / span '+rowSpan;e.style.gridColumn=col+' / span '+colSpan;root.appendChild(e)};
-  const cell=(label,bg)=>{const e=document.createElement('div');e.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px solid #536a7d;background:'+bg+';color:#243b51;font-weight:700;font-size:clamp(11px,1.2vw,18px);overflow:hidden;min-width:0;min-height:0';e.textContent=label;e.title=label;return e};
+  const cell=(label,bg,vertical=false)=>{const e=document.createElement('div');e.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px solid #536a7d;background:'+bg+';color:#243b51;font-weight:800;font-size:clamp(12px,1.4vw,19px);overflow:hidden;min-width:0;min-height:0';e.title=label;if(vertical){const span=document.createElement('span');span.textContent=label;span.style.cssText='display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:center';e.appendChild(span)}else e.textContent=label;return e};
   const corner=document.createElement('div');corner.textContent='·';corner.style.cssText='display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;position:relative';place(corner,1,1);const cornerH=document.createElement('div');cornerH.style.cssText='background:#24394e';place(cornerH,2,1);const cornerV=document.createElement('div');cornerV.style.cssText='background:#24394e';place(cornerV,1,2);
   const hLine=document.createElement('div');hLine.style.background='#24394e';place(hLine,2,2,1,cols.length+1);
   const vLine=document.createElement('div');vLine.style.background='#24394e';place(vLine,2,2,rows.length+1,1);
   cols.forEach((c,j)=>place(cell(String(c),c===10?colors.ten:colors.one),1,j+3));
-  rows.forEach((r,i)=>{const edgeTile=cell(String(r),r===10?colors.ten:colors.one);if(r===10){edgeTile.textContent='';const label=document.createElement('span');label.textContent=String(r);label.style.cssText='display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:center';edgeTile.appendChild(label)}place(edgeTile,i+3,1);cols.forEach((c,j)=>place(cell(String(c*r),c===10&&r===10?colors.hundred:c===10||r===10?colors.ten:colors.one),i+3,j+3))});
+  rows.forEach((r,i)=>{const edgeTile=cell(String(r),r===10?colors.ten:colors.one,r===10);place(edgeTile,i+3,1);cols.forEach((c,j)=>place(cell(String(c*r),c===10&&r===10?colors.hundred:c===10||r===10?colors.ten:colors.one,r===10&&c===1),i+3,j+3))});
   const wrap=document.createElement('div');wrap.style.cssText='overflow:auto;padding:8px';wrap.appendChild(root);stage.appendChild(wrap);
   const note=document.createElement('p');note.className='tileNote';note.textContent='Tens form 10-unit edge tiles; their intersections form 100-square tiles. Remaining units form strips and unit squares.';stage.appendChild(note);return;
  }
@@ -126,35 +134,56 @@ function drawTiles(top,left,hide){
  root.style.gridTemplateRows=label+'px '+sep+'px '+heights.map(h=>h+'px').join(' ');
  const colors={square:'#a9cbed',variable:'#c3e4d4',unit:'#f6e3b5',negative:'#f4c3c3'};
  const place=(e,row,col,rowSpan=1,colSpan=1)=>{e.style.gridRow=row+' / span '+rowSpan;e.style.gridColumn=col+' / span '+colSpan;root.appendChild(e)};
- const add=t=>{const d=document.createElement('div');const color=t.sign<0?colors.negative:t.pow===2?colors.square:t.pow===1?colors.variable:colors.unit;d.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px solid #536a7d;background:'+color+';color:#243b51;font-weight:700;font-size:clamp(12px,1.3vw,19px);min-width:0;min-height:0';d.textContent=(t.sign<0?'−':'')+(t.pow===2?'x²':t.pow===1?'x':'1');return d};
+ const add=(t,vertical=false)=>{const d=document.createElement('div');const color=t.sign<0?colors.negative:t.pow===2?colors.square:t.pow===1?colors.variable:colors.unit;d.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px solid #536a7d;background:'+color+';color:#243b51;font-weight:700;font-size:clamp(12px,1.3vw,19px);min-width:0;min-height:0';const txt=(t.sign<0?'−':'')+(t.pow===2?'x²':t.pow===1?'x':'1');if(vertical){const span=document.createElement('span');span.textContent=txt;span.style.cssText='display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:center';d.appendChild(span)}else d.textContent=txt;return d};
  const corner=document.createElement('div');corner.textContent='·';corner.style.cssText='display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;position:relative';place(corner,1,1);const cornerH=document.createElement('div');cornerH.style.cssText='background:#24394e';place(cornerH,2,1);const cornerV=document.createElement('div');cornerV.style.cssText='background:#24394e';place(cornerV,1,2);
  const hLine=document.createElement('div');hLine.style.background='#24394e';place(hLine,2,2,1,cols.length+1);
  const vLine=document.createElement('div');vLine.style.background='#24394e';place(vLine,2,2,rows.length+1,1);
  cols.forEach((c,j)=>place(add(c),1,j+3));
- rows.forEach((r,i)=>{place(add(r),i+3,1);cols.forEach((c,j)=>place(add({pow:r.pow+c.pow,sign:r.sign*c.sign}),i+3,j+3))});
+ rows.forEach((r,i)=>{place(add(r,r.pow===1),i+3,1);cols.forEach((c,j)=>place(add({pow:r.pow+c.pow,sign:r.sign*c.sign}),r.pow===1&&c.pow===0),i+3,j+3))});
  wrap.appendChild(root);stage.appendChild(wrap);
  const note=document.createElement('p');note.className='tileNote';note.textContent=rows.length+' tiles along the left edge × '+cols.length+' tiles along the top edge. Interior tiles represent their pairwise products.';stage.appendChild(note);
 }
 function drawAlgorithm(p,q,top,left,hide){
  const d=document.createElement('div');d.className='algorithm';d.setAttribute('aria-label','Standard multiplication algorithm');
- let topLine,bottomLine,finalLine,partials=[];
- if(!p[1]&&!q[1]&&Number.isInteger(p[0])&&Number.isInteger(q[0])){
-   const a=p[0],b=q[0],digits=String(Math.abs(b)).split('').reverse(),multSign=b<0?-1:1;
-   topLine=String(a);bottomLine='× '+String(b);finalLine=hide?'?':String(a*b);
-   if(digits.length>1)partials=digits.map((v,i)=>({text:hide?'?':String(a*Number(v)*10**i*multSign),color:tone('cols',Math.max(0,top.length-1-i))}));
- }else{
-   topLine='('+polyText(p)+')';bottomLine='× ('+polyText(q)+')';finalLine=hide?'?':polyText(result(p,q));
-   const terms=[];
-   if(q[0])terms.push({text:polyText([p[0]*q[0],p[1]*q[0],0]),color:tone('cols',top.findIndex(t=>t.pow===0)>=0?top.findIndex(t=>t.pow===0):0)});
-   if(q[1])terms.push({text:polyText([0,p[0]*q[1],p[1]*q[1]]),color:tone('cols',top.findIndex(t=>t.pow===1)>=0?top.findIndex(t=>t.pow===1):0)});
-   if(terms.length>1)partials=terms.map(t=>({text:hide?'?':t.text,color:t.color}));
- }
- const add=(textValue,bg,bold)=>{const line=document.createElement('div');line.className='alg-line';line.textContent=textValue;if(bg)line.style.backgroundColor=bg;if(bold)line.style.fontWeight='850';d.appendChild(line)};
+ const add=(value,bg,bold)=>{const line=document.createElement('div');line.className='alg-line';line.textContent=value;if(bg)line.style.backgroundColor=bg;if(bold)line.style.fontWeight='850';d.appendChild(line)};
  const rule=()=>{const line=document.createElement('div');line.className='alg-rule';d.appendChild(line)};
- add(topLine);add(bottomLine);rule();
- partials.forEach(t=>add(t.text,t.color));
- if(partials.length>0)rule();
- add(finalLine,null,true);
+ const factorLine=(value,groups,axis,prefix)=>{
+  const line=document.createElement('div');line.className='alg-line';line.style.fontWeight='850';
+  if(prefix){line.appendChild(document.createTextNode(prefix))}
+  const digits=String(value),raw=digits.replace('-','');let position=0;
+  for(const character of digits){
+    const span=document.createElement('span');span.textContent=character;
+    if(/[0-9]/.test(character)){
+      const exp=raw.length-1-position;
+      const amount=Number(character)*10**exp;
+      const idx=groups.findIndex(t=>t.pow===0&&Math.abs(t.c)===amount);
+      span.style.color=idx>=0?toneInk(axis,idx):'#52667c';
+      position++;
+    }
+    line.appendChild(span);
+  }
+  d.appendChild(line);
+ };
+ if(!p[1]&&!q[1]&&Number.isInteger(p[0])&&Number.isInteger(q[0])){
+  const a=p[0],b=q[0],digits=String(Math.abs(b)).split('').reverse();
+  factorLine(a,left,'rows','');factorLine(b,top,'cols','× ');rule();
+  if(digits.length>1){
+    digits.forEach((digit,i)=>{
+      const part=Number(digit)*a*10**i*(b<0?-1:1);
+      const idx=top.findIndex(t=>t.pow===0&&Math.abs(t.c)===Number(digit)*10**i);
+      add(hide?'?':String(part),idx>=0?tone('cols',idx):null,false);
+    });
+    rule();
+  }
+  add(hide?'?':String(a*b),null,true);
+ }else{
+  add('('+polyText(p)+')');add('× ('+polyText(q)+')');rule();
+  const parts=[];
+  if(q[0])parts.push({value:polyText([p[0]*q[0],p[1]*q[0],0]),index:top.findIndex(t=>t.pow===0)});
+  if(q[1])parts.push({value:polyText([0,p[0]*q[1],p[1]*q[1]]),index:top.findIndex(t=>t.pow===1)});
+  if(parts.length>1){parts.forEach(t=>add(hide?'?':t.value,t.index>=0?tone('cols',t.index):null));rule()}
+  add(hide?'?':polyText(result(p,q)),null,true);
+ }
  $('stage').appendChild(d);
 }
 function build(){try{let p=parse($('a').value),q=parse($('b').value);if(Math.max(Math.abs(p[0]),Math.abs(q[0]))>99999||Math.max(Math.abs(p[1]),Math.abs(q[1]))>999)throw Error('For readability, use constants up to 99,999 and x coefficients up to 999.');current={p,q,top:parts(q),left:parts(p),r:result(p,q)};$('error').textContent='';render()}catch(e){$('error').textContent=e.message}}
