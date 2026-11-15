@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.15</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.16</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
 .steps{font-family:"STIX Two Text",Georgia,"Times New Roman",serif;font-weight:600}
 .math-variable{font-family:"STIX Two Text",Georgia,"Times New Roman",serif;font-style:italic;font-weight:500}
 </style></head><body><main>
-<header><h1>Area Model Studio <span class="pill">v2.15</span></h1></header>
+<header><h1>Area Model Studio <span class="pill">v2.16</span></h1></header>
 <section class="panel app-panel">
 <div class="toolbar">
 <div class="controls" aria-label="Multiplication factors">
@@ -263,13 +263,17 @@ function drawAlgorithm(p,q,top,left,hide){
  }
  $('stage').appendChild(d);
 }
-function syncModes(hasX){
+function syncModes(hasX,p,q){
+ const allowSquares=!hasX&&p[0]>=0&&q[0]>=0&&p[0]*q[0]<1000;
+ const allowTiles=hasX;
  document.querySelectorAll('[data-mode]').forEach(btn=>{
-  const unavailable=hasX&&btn.dataset.mode==='squares';
+  const unavailable=(btn.dataset.mode==='squares'&&!allowSquares)||
+                    (btn.dataset.mode==='tiles'&&!allowTiles);
   btn.hidden=unavailable;
   btn.disabled=unavailable;
  });
- if(hasX&&mode==='squares')mode='tiles';
+ if(mode==='squares'&&!allowSquares)mode=allowTiles?'tiles':'numeric';
+ if(mode==='tiles'&&!allowTiles)mode=allowSquares?'squares':'numeric';
  document.querySelectorAll('[data-mode]').forEach(btn=>{
   const selected=btn.dataset.mode===mode;
   btn.classList.toggle('active',selected);
@@ -283,7 +287,7 @@ function build(){
   current={p,q,top:parts(q),left:parts(p),r:result(p,q)};
   $('error').textContent='';
   const hasX=/x/i.test($('a').value+' '+$('b').value)||p[1]!==0||q[1]!==0;
-  syncModes(hasX);
+  syncModes(hasX,p,q);
   render();
  }catch(e){$('error').textContent=e.message}
 }
