@@ -94,7 +94,7 @@ function render(){
  if(mode==='tiles')drawTiles(top,left,hide);
  if(mode==='algorithm')drawAlgorithm(p,q,top,left,hide);
  const terms=left.flatMap(l=>top.map(t=>product(l,t)));
- $('steps').innerHTML='<strong>Distributive property</strong><div class="math">('+safe(polyText(p))+')('+safe(polyText(q))+') = '+safe(left.map(l=>top.map(t=>textTerm(l)+'('+textTerm(t)+')').join(' + ')).join(' + '))+'</div><div class="math">Partial products: '+safe(terms.map(textTerm).join(' + ').replace(/\\+ −/g,'− '))+'</div><div class="math"><strong>Total: '+safe(polyText(r))+'</strong></div>';
+ $('steps').innerHTML='<strong>Distributive property</strong><div class="math">('+safe(polyText(p))+')('+safe(polyText(q))+') = '+safe(left.map(l=>top.map(t=>textTerm(l)+'('+textTerm(t)+')').join(' + ')).join(' + '))+'</div><div class="math">Partial products: '+safe(terms.map(textTerm).join(' + ').replace(/\+ −/g,'− '))+'</div><div class="math"><strong>Total: '+safe(polyText(r))+'</strong></div>';
 }
 function drawNumeric(top,left,hide){
  const grid=document.createElement('div');grid.className='gridModel';
