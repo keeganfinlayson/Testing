@@ -1,12 +1,34 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.8.1</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.9</title><style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#19283c;background:#f4f6fa}*{box-sizing:border-box}body{margin:0}main{max-width:1120px;margin:auto;padding:24px}h1{font-size:1.6rem;margin:0}p{color:#546579}header{margin-bottom:18px}.panel{background:white;border:1px solid #dce3ec;border-radius:14px;padding:18px;margin-bottom:16px}.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end}label{font-size:1rem;font-weight:750;display:grid;gap:5px}input,select,button{font:inherit;border:1px solid #b8c5d5;border-radius:8px;padding:9px 11px;background:white;color:#19283c}input{width:175px}button{cursor:pointer}button:hover{border-color:#466ca5}button.active{background:#204f8a;color:white;border-color:#204f8a}.tabs{display:flex;gap:7px;flex-wrap:wrap}.tabs button{flex:1;min-width:135px;font-size:1.04rem;font-weight:700}.bar{font-size:1.05rem;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.muted{color:#66768a;font-size:.88rem}.math{font-size:1.5rem;font-weight:650;line-height:1.55;overflow-wrap:anywhere}.error{color:#a11d2c;min-height:1.3em}.stage{overflow:auto;min-height:280px;padding:16px 6px}.gridModel{display:grid;gap:4px;min-width:0;width:100%;max-width:850px;margin:auto}.cell,.head{display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;min-width:55px;min-height:55px;border-radius:3px}.head{font-weight:800;font-size:1.3rem;background:#edf1f7}.cell{border:1px solid #7d9dbb;background:#d9eaf9;font-size:1.45rem;font-weight:800;position:relative;flex-direction:column;gap:8px}.cell small{color:#283e52;font-size:1.03rem;font-weight:750}.tileStage{display:flex;justify-content:center;align-items:center;min-height:320px}.tileGrid{display:grid;border:2px solid #52667e;background:#fff;gap:1px;max-width:100%;overflow:auto}.tile{display:flex;align-items:center;justify-content:center;border:1px solid #597d9b;background:#b9d9f5;color:#163b62;font-weight:650;font-size:.85rem;min-width:23px;min-height:23px}.tile.x2{background:#9fc7ed}.tile.x{background:#c3e4d4;color:#174b36}.tile.unit{background:#f8e3b4;color:#6c4d15}.tile.neg{background:#f4c3c3;color:#812b2b}.tileNote{font-size:.85rem;color:#586a7d;text-align:center;margin-top:8px}.algorithm{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(1.5rem,2.5vw,2rem);font-weight:750;line-height:1.55;display:table;margin:12px auto}.alg-line{white-space:pre;text-align:right;padding:0 14px;min-width:7ch}.alg-rule{height:0;border-top:2.5px solid #273d53;margin:3px 0}.steps{font-size:1.05rem;font-weight:600;background:#f7f9fc;border:1px solid #e3e9f0;border-radius:9px;padding:13px 16px;line-height:1.8}.examples{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.examples button{font-size:.85rem;padding:6px 9px}.pill{font-size:.78rem;background:#eef3fa;padding:4px 8px;border-radius:20px}.sr{position:absolute;left:-9999px}@media(max-width:600px){main{padding:12px}.panel{padding:12px}.tabs button{min-width:calc(50% - 7px)}input{width:135px}.stage{padding:8px 0}}
-</style></head><body><main><header><h1>Area Model Studio <span class="pill">v2.8.1 · under development</span></h1><p>One multiplication problem, four connected representations.</p></header>
+</style></head><body><main><header><h1>Area Model Studio <span class="pill">v2.9 · under development</span></h1><p>One multiplication problem, four connected representations.</p></header>
 <section class="panel"><div class="controls"><label>First factor<input id="a" value="34" aria-label="First factor"></label><label>Second factor<input id="b" value="26" aria-label="Second factor"></label></div><div class="error" id="error" role="alert"></div></section>
 <section class="panel"><div class="tabs" role="tablist" aria-label="Representation"><button class="active" data-mode="units" role="tab" aria-selected="true">Unit squares</button><button data-mode="squares" role="tab" aria-selected="false">Squares</button><button data-mode="tiles" role="tab" aria-selected="false">Algebra tiles</button><button data-mode="numeric" role="tab" aria-selected="false">Representative / numeric</button><button data-mode="algorithm" role="tab" aria-selected="false">Algorithm</button></div><div class="bar" style="margin-top:14px"><strong id="heading">Squares</strong><span class="muted" id="description"></span></div><div class="stage" id="stage"></div><div class="steps" id="steps"></div></section></main>
 <script>
-const MODEL_PALETTE={cols:[[226,185,128],[140,173,201],[156,185,156],[184,166,194]],rows:[[218,157,145],[148,197,166],[151,169,194],[209,183,145]]};
-
+// Option A: amber/blue columns and coral/sage rows. Further colors extend the pattern for three or four partitions.
+const MODEL_PALETTE={
+ cols:[[240,174,60],[95,148,230],[166,125,205],[81,173,175]],
+ rows:[[226,109,146],[101,190,150],[136,151,203],[208,165,111]]
+};
 const toneInk=(kind,index)=>'rgb('+MODEL_PALETTE[kind][index%MODEL_PALETTE[kind].length].map(v=>Math.round(v*.58)).join(',')+')';
+const toOKLab=(rgb)=>{
+ const [r,g,b]=rgb.map(v=>v/255).map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4));
+ const l=Math.cbrt(.4122214708*r+.5363325363*g+.0514459929*b);
+ const m=Math.cbrt(.2119034982*r+.6806995451*g+.1073969566*b);
+ const n=Math.cbrt(.0883024619*r+.2817188376*g+.6299787005*b);
+ return [.2104542553*l+.793617785*m-.0040720468*n,1.9779984951*l-2.428592205*m+.4505937099*n,.0259040371*l+.7827717662*m-.808675766*n];
+};
+const fromOKLab=(L,a,b)=>{
+ const l=Math.pow(L+.3963377774*a+.2158037573*b,3),m=Math.pow(L-.1055613458*a-.0638541728*b,3),n=Math.pow(L-.0894841775*a-1.291485548*b,3);
+ return [4.0767416621*l-3.3077115913*m+.2309699292*n,-1.2684380046*l+2.6097574011*m-.3413193965*n,-.0041960863*l-.7034186147*m+1.707614701*n]
+ .map(v=>{v=Math.max(0,v);return Math.max(0,Math.min(255,Math.round(255*(v<=.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-.055))))});
+};
+const tone=(kind,index)=>'rgb('+MODEL_PALETTE[kind][index%MODEL_PALETTE[kind].length].join(',')+')';
+const toneSoft=(kind,index)=>'rgb('+MODEL_PALETTE[kind][index%MODEL_PALETTE[kind].length].map(v=>Math.round(v*.43+255*.57)).join(',')+')';
+const mixedTone=(ri,ci)=>{
+ const a=toOKLab(MODEL_PALETTE.rows[ri%MODEL_PALETTE.rows.length]),b=toOKLab(MODEL_PALETTE.cols[ci%MODEL_PALETTE.cols.length]);
+ // Equal perceived lightness; moderate chroma for legible grid lines and navy text.
+ return 'rgb('+fromOKLab(.86,(a[1]+b[1])*.275,(a[2]+b[2])*.275).join(',')+')';
+};
 function drawDimensionArrows(svg,ns,origin,unit,top,left){
  const svgEl=(tag,attrs)=>{const e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));svg.appendChild(e);return e};
  const arrow=(x1,y1,x2,y2)=>{const isHorizontal=y1===y2;const lo=4,hi=8,half=3.5;
@@ -25,19 +47,6 @@ function drawDimensionArrows(svg,ns,origin,unit,top,left){
  let y=origin;
  left.forEach((part,ri)=>{const len=part.c*unit;arrow(origin-12,y+2,origin-12,y+len-2);label(origin-37,y+len/2,part,toneInk('rows',ri));y+=len});
 }
-const tone=(kind,index)=>'rgb('+MODEL_PALETTE[kind][index%MODEL_PALETTE[kind].length].join(',')+')';
-const mixedTone=(ri,ci)=>'rgb('+MODEL_PALETTE.cols[ci%MODEL_PALETTE.cols.length].map((v,k)=>Math.round(.52*v+.48*MODEL_PALETTE.rows[ri%MODEL_PALETTE.rows.length][k])).join(',')+')';
-const $=id=>document.getElementById(id);let mode='units',current=null;
-const fmt=n=>String(n).replace(/^-/, '−');const signTerm=(c,p,first)=>{if(!c)return '';let s=c<0?'−':first?'':'+';let a=Math.abs(c);return s+(p?(a===1?'':a)+(p===2?'x²':'x'):a)};
-function polyText(p){let out='';for(let i=2;i>=0;i--)if(p[i])out+=signTerm(p[i],i,!out);return out||'0'}
-function parse(raw){let s=raw.replace(/\s/g,'').replace(/−/g,'-').replace(/\*/g,'').replace(/\(/g,'').replace(/\)/g,'');if(!s||!/^[+\-\dxX]+$/.test(s))throw Error('Use numbers and x, such as 34, 2x+3, or x−5.');s=s.replace(/X/g,'x').replace(/x/g,'x');if(!/^[+-]/.test(s))s='+'+s;let parts=s.match(/[+-][^+-]+/g)||[];let out=[0,0,0];for(let t of parts){let sign=t[0]==='-'?-1:1,v=t.slice(1);if(/^\d+$/.test(v))out[0]+=sign*Number(v);else if(/^(\d*)x$/.test(v))out[1]+=sign*Number(v.slice(0,-1)||1);else throw Error('Each factor can contain constants and x terms (no powers yet).')}if(!Number.isSafeInteger(out[0])||!Number.isSafeInteger(out[1]))throw Error('Number is too large.');return out}
-function parts(p){if(p[1]){let a=[];if(p[1])a.push({c:p[1],pow:1});if(p[0])a.push({c:p[0],pow:0});return a}let n=p[0],sg=Math.sign(n)||1,abs=Math.abs(n);if(abs===0)return [{c:0,pow:0}];let digs=String(abs).split('').map((v,i)=>Number(v)*10**(String(abs).length-i-1)).filter(Boolean);return digs.map(c=>({c:c*sg,pow:0}))}
-function textTerm(t){return polyText([t.pow===0?t.c:0,t.pow===1?t.c:0,t.pow===2?t.c:0])}
-function product(a,b){return {c:a.c*b.c,pow:a.pow+b.pow}}
-function result(p,q){return [p[0]*q[0],p[0]*q[1]+p[1]*q[0],p[1]*q[1]]}
-function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function cell(t){return safe(textTerm(t))}
-function render(){if(!current)return;let {p,q,top,left,r}=current;let hide=false,heading={units:'Unit squares',squares:'Unit squares / partitioned area',tiles:'Algebra tiles',numeric:'Representative / numeric area model',algorithm:'Multiplication algorithm'};let descriptions={units:'Uniform 1 × 1 grid, no place-value boundaries',squares:'Area shown with unit squares where practical',tiles:'x², x, and unit regions',numeric:'Place-value partitions and partial products',algorithm:'Written multiplication or symbolic distribution'};$('heading').textContent=heading[mode];$('description').textContent=descriptions[mode];$('stage').innerHTML='';if(mode==='units')drawUnits(top,left);if(mode==='numeric')drawNumeric(top,left,hide);if(mode==='squares')drawSquares(top,left,hide);if(mode==='tiles')drawTiles(top,left,hide);if(mode==='algorithm')drawAlgorithm(p,q,top,left,hide);let terms=left.flatMap(l=>top.map(t=>product(l,t)));let expansion=terms.map((t,i)=> (i?' + ':'')+'('+textTerm(t)+')').join('').replace(/\+ \(−/g,'− (');$('steps').innerHTML='<strong>Distributive property</strong><div class="math">('+safe(polyText(p))+')('+safe(polyText(q))+') = '+safe(left.map(l=>top.map(t=>textTerm(l)+'('+textTerm(t)+')').join(' + ')).join(' + '))+'</div>'+(hide?'<div class="muted">Reveal products and totals to complete the calculation.</div>':'<div class="math">Partial products: '+safe(terms.map(textTerm).join(' + ').replace(/\+ −/g,'− '))+'</div><div class="math"><strong>Total: '+safe(polyText(r))+'</strong></div>')}
 function drawNumeric(top,left,hide){
  const grid=document.createElement('div');grid.className='gridModel';
  grid.style.minWidth=(90+top.length*185)+'px';
@@ -171,7 +180,7 @@ function drawAlgorithm(p,q,top,left,hide){
     digits.forEach((digit,i)=>{
       const part=Number(digit)*a*10**i*(b<0?-1:1);
       const idx=top.findIndex(t=>t.pow===0&&Math.abs(t.c)===Number(digit)*10**i);
-      add(hide?'?':String(part),idx>=0?tone('cols',idx):null,false);
+      add(hide?'?':String(part),idx>=0?toneSoft('cols',idx):null,false);
     });
     rule();
   }
@@ -181,7 +190,7 @@ function drawAlgorithm(p,q,top,left,hide){
   const parts=[];
   if(q[0])parts.push({value:polyText([p[0]*q[0],p[1]*q[0],0]),index:top.findIndex(t=>t.pow===0)});
   if(q[1])parts.push({value:polyText([0,p[0]*q[1],p[1]*q[1]]),index:top.findIndex(t=>t.pow===1)});
-  if(parts.length>1){parts.forEach(t=>add(hide?'?':t.value,t.index>=0?tone('cols',t.index):null));rule()}
+  if(parts.length>1){parts.forEach(t=>add(hide?'?':t.value,t.index>=0?toneSoft('cols',t.index):null));rule()}
   add(hide?'?':polyText(result(p,q)),null,true);
  }
  $('stage').appendChild(d);
