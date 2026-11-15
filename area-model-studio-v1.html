@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.19</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.20</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
 .stage,.steps,.controls input{font-family:"STIX Two Text",Georgia,"Times New Roman",serif;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
 .math-variable{font-family:inherit;font-style:italic;font-weight:700}
 </style></head><body><main>
-<header><h1>Area Model Studio <span class="pill">v2.19</span></h1></header>
+<header><h1>Area Model Studio <span class="pill">v2.20</span></h1></header>
 <section class="panel app-panel">
 <div class="toolbar">
 <div class="controls" aria-label="Multiplication factors">
@@ -209,7 +209,7 @@ function drawTiles(top,left,hide){
  const factorTiles=(v)=>{let arr=[];if(v[1])for(let i=0;i<Math.abs(v[1]);i++)arr.push({pow:1,sign:Math.sign(v[1])});if(v[0])for(let i=0;i<Math.abs(v[0]);i++)arr.push({pow:0,sign:Math.sign(v[0])});return arr};
  const rows=factorTiles(p),cols=factorTiles(q);
  if(!rows.length||!cols.length){stage.textContent='Zero factor: no tiles occupy the area.';return}
- if(rows.length*cols.length>900||rows.length>45||cols.length>45){drawNumeric(top,left,false);let n=document.createElement('p');n.className='tileNote';n.textContent='This product contains too many individual algebra tiles to display legibly. The partitioned model is shown instead.';stage.appendChild(n);return}
+ if(!reasonableAlgebraTiles(p,q)){drawNumeric(top,left,false);return}
  const viewportH=Number.isFinite(window.innerHeight)?window.innerHeight:900;
  const availableW=Math.max(280,(stage.clientWidth||1100)-24);
  const availableH=Math.min(760,Math.max(400,viewportH*.74));
@@ -286,9 +286,19 @@ function drawAlgorithm(p,q,top,left,hide){
  }
  $('stage').appendChild(d);
 }
+// Count every physical piece, including the two outside edges.
+// Keep algebra tiles limited to layouts students can actually distinguish.
+function reasonableAlgebraTiles(p,q){
+ const edgeCount=v=>Math.abs(v[0])+Math.abs(v[1]);
+ const edgeUnits=v=>Math.abs(v[0])+4.5*Math.abs(v[1]);
+ const rows=edgeCount(p),cols=edgeCount(q);
+ const total=rows*cols+rows+cols;
+ return rows>0&&cols>0&&rows<=12&&cols<=12&&total<=100&&
+        edgeUnits(p)<=36&&edgeUnits(q)<=36;
+}
 function syncModes(hasX,p,q){
  const allowSquares=!hasX&&p[0]>=0&&q[0]>=0&&p[0]<=99&&q[0]<=99&&p[0]*q[0]<1000;
- const allowTiles=hasX;
+ const allowTiles=hasX&&reasonableAlgebraTiles(p,q);
  document.querySelectorAll('[data-mode]').forEach(btn=>{
   const unavailable=(btn.dataset.mode==='squares'&&!allowSquares)||
                     (btn.dataset.mode==='tiles'&&!allowTiles);
@@ -309,7 +319,7 @@ function build(){
   if(Math.max(Math.abs(p[0]),Math.abs(q[0]))>99999||Math.max(Math.abs(p[1]),Math.abs(q[1]))>999)throw Error('For readability, use constants up to 99,999 and x coefficients up to 999.');
   current={p,q,top:parts(q),left:parts(p),r:result(p,q)};
   $('error').textContent='';
-  const hasX=/x/i.test($('a').value+' '+$('b').value)||p[1]!==0||q[1]!==0;
+  const hasX=p[1]!==0||q[1]!==0;
   syncModes(hasX,p,q);
   render();
  }catch(e){$('error').textContent=e.message}
