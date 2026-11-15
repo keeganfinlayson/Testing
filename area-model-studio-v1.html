@@ -1,11 +1,13 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.12</title><style>
-:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#19283c;background:#f4f6fa}*{box-sizing:border-box}body{margin:0}main{max-width:1380px;margin:auto;padding:18px 24px}h1{font-size:1.6rem;margin:0}p{color:#546579}header{margin-bottom:12px}.panel{background:white;border:1px solid #dce3ec;border-radius:14px;padding:18px;margin-bottom:16px}.app-panel{padding:16px 20px 20px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}.controls{display:flex;gap:6px;align-items:center;flex:0 0 auto;border-right:2px solid #c2cfe0;padding-right:18px;margin-right:3px}label{font-size:.9rem;font-weight:750;display:grid;gap:4px}input,select,button{font:inherit;border:1px solid #b8c5d5;border-radius:8px;padding:9px 11px;background:white;color:#19283c}input{width:106px;font-size:1.25rem;font-weight:800;text-align:center;padding:7px 8px}.factor-paren{font-size:1.6rem;font-weight:700;line-height:1;color:#19283c}button{cursor:pointer}button:hover{border-color:#466ca5}button.active{background:#204f8a;color:white;border-color:#204f8a}.tabs{display:flex;gap:6px;flex:1 1 500px;justify-content:space-between;flex-wrap:wrap}.tabs button{flex:1 1 auto;min-width:0;font-size:.94rem;font-weight:750;padding:8px 10px}.bar{font-size:1.08rem;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.muted{color:#66768a;font-size:.88rem}.math{font-size:1.5rem;font-weight:650;line-height:1.55;overflow-wrap:anywhere}.error{color:#a11d2c;min-height:1.3em}.stage{overflow:auto;min-height:360px;padding:14px 4px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.stage>div{flex-shrink:0}.gridModel{display:grid;gap:4px;min-width:0;width:100%;max-width:1150px;margin:auto}.cell,.head{display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;min-width:55px;min-height:55px;border-radius:3px}.head{font-weight:800;font-size:1.3rem;background:#edf1f7}.cell{border:1px solid #7d9dbb;background:#d9eaf9;font-size:1.45rem;font-weight:800;position:relative;flex-direction:column;gap:8px}.cell small{color:#283e52;font-size:1.03rem;font-weight:750}.tileStage{display:flex;justify-content:center;align-items:center;min-height:400px}.tileGrid{display:grid;border:2px solid #52667e;background:#fff;gap:1px;max-width:100%;overflow:auto}.tile{display:flex;align-items:center;justify-content:center;border:1px solid #597d9b;background:#b9d9f5;color:#163b62;font-weight:650;font-size:.85rem;min-width:23px;min-height:23px}.tile.x2{background:#9fc7ed}.tile.x{background:#c3e4d4;color:#174b36}.tile.unit{background:#f8e3b4;color:#6c4d15}.tile.neg{background:#f4c3c3;color:#812b2b}.tileNote{font-size:.85rem;color:#586a7d;text-align:center;margin-top:8px}.algorithm{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(1.5rem,2.5vw,2rem);font-weight:750;line-height:1.55;display:table;margin:12px auto}.alg-line{white-space:pre;text-align:right;padding:0 14px;min-width:7ch}.alg-rule{height:0;border-top:2.5px solid #273d53;margin:3px 0}.steps{width:100%;font-size:clamp(1.05rem,1.7vw,1.5rem);font-weight:800;background:#f1f5fa;border:1px solid #cfdae9;border-radius:10px;padding:14px 18px;line-height:1.4;overflow-x:auto;white-space:nowrap;text-align:center;color:#142c4a}.steps .math{font-size:1.2rem;line-height:1.5}.examples{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.examples button{font-size:.85rem;padding:6px 9px}.pill{font-size:.78rem;font-weight:600;background:#eef3fa;padding:4px 8px;border-radius:20px}.sr{position:absolute;left:-9999px}@media(max-width:700px){main{padding:10px}.panel{padding:10px}.toolbar{align-items:center}.controls{padding-right:12px;margin-right:0}.tabs{flex:1 1 100%;justify-content:flex-start}.tabs button{font-size:.86rem;padding:7px 9px}input{width:84px}.stage{padding:8px 0;min-height:280px}.steps{text-align:left}}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.13</title><style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#19283c;background:#f4f6fa}*{box-sizing:border-box}body{margin:0}main{max-width:1380px;margin:auto;padding:18px 24px}h1{font-size:1.6rem;margin:0}p{color:#546579}header{margin-bottom:12px}.panel{background:white;border:1px solid #dce3ec;border-radius:14px;padding:18px;margin-bottom:16px}.app-panel{padding:16px 20px 20px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}.controls{display:flex;gap:6px;align-items:center;flex:0 0 auto;border-right:2px solid #c2cfe0;padding-right:18px;margin-right:3px}label{font-size:.9rem;font-weight:750;display:grid;gap:4px}input,select,button{font:inherit;border:1px solid #b8c5d5;border-radius:8px;padding:9px 11px;background:white;color:#19283c}input{width:106px;font-size:1.25rem;font-weight:800;text-align:center;padding:7px 8px}.factor-paren{font-size:1.6rem;font-weight:700;line-height:1;color:#19283c}button{cursor:pointer}button:hover{border-color:#466ca5}button.active{background:#204f8a;color:white;border-color:#204f8a}.tabs{display:flex;gap:6px;flex:1 1 500px;justify-content:space-between;flex-wrap:wrap}.tabs button{flex:1 1 auto;min-width:0;font-size:.94rem;font-weight:750;padding:8px 10px}.tabs button[hidden]{display:none}.bar{font-size:1.08rem;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.muted{color:#66768a;font-size:.88rem}.math{font-size:1.5rem;font-weight:650;line-height:1.55;overflow-wrap:anywhere}.error{color:#a11d2c;min-height:1.3em}.stage{overflow:auto;min-height:360px;padding:14px 4px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.stage>div{flex-shrink:0}.gridModel{display:grid;gap:4px;min-width:0;width:100%;max-width:1150px;margin:auto}.cell,.head{display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;min-width:55px;min-height:55px;border-radius:3px}.head{font-weight:800;font-size:1.3rem;background:#edf1f7}.cell{border:1px solid #7d9dbb;background:#d9eaf9;font-size:1.45rem;font-weight:800;position:relative;flex-direction:column;gap:8px}.cell small{color:#283e52;font-size:1.03rem;font-weight:750}.tileStage{display:flex;justify-content:center;align-items:center;min-height:400px}.tileGrid{display:grid;border:2px solid #52667e;background:#fff;gap:1px;max-width:100%;overflow:auto}.tile{display:flex;align-items:center;justify-content:center;border:1px solid #597d9b;background:#b9d9f5;color:#163b62;font-weight:650;font-size:.85rem;min-width:23px;min-height:23px}.tile.x2{background:#9fc7ed}.tile.x{background:#c3e4d4;color:#174b36}.tile.unit{background:#f8e3b4;color:#6c4d15}.tile.neg{background:#f4c3c3;color:#812b2b}.tileNote{font-size:.85rem;color:#586a7d;text-align:center;margin-top:8px}.algorithm{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(1.5rem,2.5vw,2rem);font-weight:750;line-height:1.55;display:table;margin:12px auto}.alg-line{white-space:pre;text-align:right;padding:0 14px;min-width:7ch}.alg-rule{height:0;border-top:2.5px solid #273d53;margin:3px 0}.steps{width:100%;font-size:clamp(1.05rem,1.7vw,1.5rem);font-weight:800;background:#f1f5fa;border:1px solid #cfdae9;border-radius:10px;padding:14px 18px;line-height:1.4;overflow-x:auto;white-space:nowrap;text-align:center;color:#142c4a}.steps .math{font-size:1.2rem;line-height:1.5}.examples{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.examples button{font-size:.85rem;padding:6px 9px}.pill{font-size:.78rem;font-weight:600;background:#eef3fa;padding:4px 8px;border-radius:20px}.sr{position:absolute;left:-9999px}@media(max-width:700px){main{padding:10px}.panel{padding:10px}.toolbar{align-items:center}.controls{padding-right:12px;margin-right:0}.tabs{flex:1 1 100%;justify-content:flex-start}.tabs button{font-size:.86rem;padding:7px 9px}input{width:84px}.stage{padding:8px 0;min-height:280px}.steps{text-align:left}}
 
 
 
 @media(max-width:1050px){.controls{border-right:0;border-bottom:2px solid #c2cfe0;padding-right:0;padding-bottom:10px;margin-bottom:3px}.tabs{flex-basis:100%}}
+.algebra-tile-label{font-family:"Cambria Math","STIX Two Math",Georgia,"Times New Roman",serif;font-weight:600;letter-spacing:0}
+.algebra-tile-variable{font-family:"Cambria Math","STIX Two Math",Georgia,"Times New Roman",serif;font-style:italic;font-weight:500}
 </style></head><body><main>
-<header><h1>Area Model Studio <span class="pill">v2.12</span></h1></header>
+<header><h1>Area Model Studio <span class="pill">v2.13</span></h1></header>
 <section class="panel app-panel">
 <div class="toolbar">
 <div class="controls" aria-label="Multiplication factors">
@@ -163,7 +165,7 @@ function drawTiles(top,left,hide){
   root.style.gridTemplateRows=edge+'px '+sep+'px '+rows.map(r=>r*u+'px').join(' ');
   const colors={hundred:'#a9cbed',ten:'#c4e2d7',one:'#f5d99c'};
   const place=(e,row,col,rowSpan=1,colSpan=1)=>{e.style.gridRow=row+' / span '+rowSpan;e.style.gridColumn=col+' / span '+colSpan;root.appendChild(e)};
-  const cell=(label,bg,vertical=false)=>{const e=document.createElement('div');e.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1.5px solid #24394e;border-radius:3px;background:'+bg+';color:#243b51;font-weight:800;font-size:clamp(12px,1.4vw,19px);overflow:hidden;min-width:0;min-height:0';e.title=label;e.setAttribute('aria-label',label);if(vertical){const span=document.createElement('span');span.textContent=label;span.style.cssText='display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:center';e.appendChild(span)}else e.textContent=label;return e};
+  const cell=(label,bg,vertical=false)=>{const e=document.createElement('div');e.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1.5px solid #24394e;border-radius:3px;background:'+bg+';color:#243b51;font-weight:600;font-size:clamp(13px,1.4vw,20px);overflow:hidden;min-width:0;min-height:0';e.className='algebra-tile-label';e.title=label;e.setAttribute('aria-label',label);if(vertical){const span=document.createElement('span');span.textContent=label;span.style.cssText='display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:center';e.appendChild(span)}else e.textContent=label;return e};
   const corner=document.createElement('div');corner.textContent='·';corner.style.cssText='display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;position:relative';place(corner,1,1);const cornerH=document.createElement('div');cornerH.style.cssText='background:#24394e';place(cornerH,2,1);const cornerV=document.createElement('div');cornerV.style.cssText='background:#24394e';place(cornerV,1,2);
   const hLine=document.createElement('div');hLine.style.background='#24394e';place(hLine,2,2,1,cols.length+1);
   const vLine=document.createElement('div');vLine.style.background='#24394e';place(vLine,2,2,rows.length+1,1);
@@ -190,7 +192,13 @@ function drawTiles(top,left,hide){
  root.style.gridTemplateRows=label+'px '+sep+'px '+heights.map(h=>h+'px').join(' ');
  const colors={square:'#a9cbed',variable:'#c3e4d4',unit:'#f6e3b5',negative:'#f4c3c3'};
  const place=(e,row,col,rowSpan=1,colSpan=1)=>{e.style.gridRow=row+' / span '+rowSpan;e.style.gridColumn=col+' / span '+colSpan;root.appendChild(e)};
- const add=(t,vertical=false)=>{const d=document.createElement('div');const color=t.sign<0?colors.negative:t.pow===2?colors.square:t.pow===1?colors.variable:colors.unit;d.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1.5px solid #24394e;border-radius:3px;background:'+color+';color:#243b51;font-weight:750;font-size:clamp(12px,1.3vw,19px);min-width:0;min-height:0';const txt=(t.sign<0?'−':'')+(t.pow===2?'x²':t.pow===1?'x':'1');if(vertical){const span=document.createElement('span');span.textContent=txt;span.style.cssText='display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:center';d.appendChild(span)}else d.textContent=txt;return d};
+ const add=(t,vertical=false)=>{const d=document.createElement('div');const color=t.sign<0?colors.negative:t.pow===2?colors.square:t.pow===1?colors.variable:colors.unit;d.style.cssText='display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1.5px solid #24394e;border-radius:3px;background:'+color+';color:#243b51;font-weight:600;font-size:clamp(13px,1.4vw,20px);min-width:0;min-height:0';const txt=(t.sign<0?'−':'')+(t.pow===2?'x²':t.pow===1?'x':'1');
+ d.className='algebra-tile-label';
+ const span=document.createElement('span');
+ span.textContent=txt;
+ if(t.pow>0)span.className='algebra-tile-variable';
+ if(vertical)span.style.cssText='display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:center';
+ d.appendChild(span);return d};
  const corner=document.createElement('div');corner.textContent='·';corner.style.cssText='display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;position:relative';place(corner,1,1);const cornerH=document.createElement('div');cornerH.style.cssText='background:#24394e';place(cornerH,2,1);const cornerV=document.createElement('div');cornerV.style.cssText='background:#24394e';place(cornerV,1,2);
  const hLine=document.createElement('div');hLine.style.background='#24394e';place(hLine,2,2,1,cols.length+1);
  const vLine=document.createElement('div');vLine.style.background='#24394e';place(vLine,2,2,rows.length+1,1);
@@ -242,7 +250,43 @@ function drawAlgorithm(p,q,top,left,hide){
  }
  $('stage').appendChild(d);
 }
-function build(){try{let p=parse($('a').value),q=parse($('b').value);if(Math.max(Math.abs(p[0]),Math.abs(q[0]))>99999||Math.max(Math.abs(p[1]),Math.abs(q[1]))>999)throw Error('For readability, use constants up to 99,999 and x coefficients up to 999.');current={p,q,top:parts(q),left:parts(p),r:result(p,q)};$('error').textContent='';render()}catch(e){$('error').textContent=e.message}}
-document.querySelectorAll('[data-mode]').forEach(btn=>btn.onclick=()=>{mode=btn.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',b===btn);b.setAttribute('aria-selected',String(b===btn))});render()});['a','b'].forEach(id=>{ $(id).addEventListener('input',()=>{clearTimeout(window._update);window._update=setTimeout(build,220)});$(id).addEventListener('keydown',e=>{if(e.key==='Enter')build()})});build();
+function syncModes(hasX){
+ document.querySelectorAll('[data-mode]').forEach(btn=>{
+  const unavailable=hasX&&btn.dataset.mode==='squares';
+  btn.hidden=unavailable;
+  btn.disabled=unavailable;
+ });
+ if(hasX&&mode==='squares')mode='tiles';
+ document.querySelectorAll('[data-mode]').forEach(btn=>{
+  const selected=btn.dataset.mode===mode;
+  btn.classList.toggle('active',selected);
+  btn.setAttribute('aria-selected',String(selected));
+ });
+}
+function build(){
+ try{
+  const p=parse($('a').value),q=parse($('b').value);
+  if(Math.max(Math.abs(p[0]),Math.abs(q[0]))>99999||Math.max(Math.abs(p[1]),Math.abs(q[1]))>999)throw Error('For readability, use constants up to 99,999 and x coefficients up to 999.');
+  current={p,q,top:parts(q),left:parts(p),r:result(p,q)};
+  $('error').textContent='';
+  const hasX=/x/i.test($('a').value+' '+$('b').value)||p[1]!==0||q[1]!==0;
+  syncModes(hasX);
+  render();
+ }catch(e){$('error').textContent=e.message}
+}
+document.querySelectorAll('[data-mode]').forEach(btn=>btn.onclick=()=>{
+ if(btn.hidden||btn.disabled)return;
+ mode=btn.dataset.mode;
+ document.querySelectorAll('[data-mode]').forEach(b=>{
+  b.classList.toggle('active',b===btn);
+  b.setAttribute('aria-selected',String(b===btn));
+ });
+ render();
+});
+['a','b'].forEach(id=>{
+ $(id).addEventListener('input',()=>{clearTimeout(window._update);window._update=setTimeout(build,220)});
+ $(id).addEventListener('keydown',e=>{if(e.key==='Enter')build()});
+});
+build();
 if(window.addEventListener)window.addEventListener('resize',()=>{if(current&&(mode==='tiles'||mode==='squares'))render()});
 </script></body></html>
