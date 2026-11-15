@@ -127,7 +127,7 @@ function drawSquares(top,left,hide){
  if(!numeric){drawNumeric(top,left,hide);return}
  const w=top.reduce((s,t)=>s+t.c,0),h=left.reduce((s,t)=>s+t.c,0);
  if(!w||!h){$('stage').textContent='Zero area: '+w+' × '+h+' = 0';return}
- const origin=96,available=Math.max(320,Math.min(1240,($('stage').clientWidth||1200)-28)),unit=Math.max(.7,Math.min(180,(available-origin-12)/w,650/h)),ns='http://www.w3.org/2000/svg';
+ const origin=96,available=Math.max(320,Math.min(1240,($('stage').clientWidth||1200)-28)),viewportH=Number.isFinite(window.innerHeight)?window.innerHeight:900,availableH=Math.min(760,Math.max(400,viewportH*.74)),unit=Math.max(3,Math.min(180,(available-origin-12)/w,availableH/h)),ns='http://www.w3.org/2000/svg';
  const svg=document.createElementNS(ns,'svg');svg.setAttribute('width',w*unit+origin+3);svg.setAttribute('height',h*unit+origin+3);
  svg.setAttribute('viewBox','0 0 '+(w*unit+origin+3)+' '+(h*unit+origin+3));svg.style.cssText='display:block;margin:auto;max-width:none';
  const add=(tag,attrs)=>{let e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));svg.appendChild(e);return e};
