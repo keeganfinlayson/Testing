@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.17</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Area Model Studio v2.18</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
 .stage,.steps,.controls input{font-family:"STIX Two Text",Georgia,"Times New Roman",serif;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
 .math-variable{font-family:inherit;font-style:italic;font-weight:700}
 </style></head><body><main>
-<header><h1>Area Model Studio <span class="pill">v2.17</span></h1></header>
+<header><h1>Area Model Studio <span class="pill">v2.18</span></h1></header>
 <section class="panel app-panel">
 <div class="toolbar">
 <div class="controls" aria-label="Multiplication factors">
@@ -117,10 +117,23 @@ function render(){
  $('steps').innerHTML=safe(expression).replace(/x/g,'<span class="math-variable">x</span>');
 }
 function drawNumeric(top,left,hide){
- const grid=document.createElement('div');grid.className='gridModel';
- grid.style.minWidth=(90+top.length*185)+'px';
- grid.style.gridTemplateColumns='minmax(75px,90px) '+top.map(()=> 'minmax(185px,1fr)').join(' ');
- grid.style.gridTemplateRows='68px '+left.map(()=> 'minmax(112px,auto)').join(' ');
+ const stage=$('stage'),grid=document.createElement('div');grid.className='gridModel';
+ // Keep the table a compact, centered near-square rather than stretching across the panel.
+ // Allow long expressions to widen cells when needed, with scrolling as a last resort.
+ const cols=top.length,rows=left.length;
+ const longest=Math.max(...top.flatMap(t=>left.map(l=>textTerm(l)+'('+textTerm(t)+')')).map(v=>v.length),5);
+ const minCellWidth=Math.max(132,Math.min(225,Math.ceil(longest*11+24)));
+ const headerWidth=72,headerHeight=64;
+ const stageWidth=Math.max(300,(stage.clientWidth||1100)-24);
+ const targetWidth=Math.max(headerWidth+cols*minCellWidth,Math.min(630,stageWidth));
+ const targetHeight=Math.max(headerHeight+rows*112,Math.min(590,targetWidth*.91));
+ const cellWidth=Math.max(minCellWidth,Math.round((targetWidth-headerWidth-4*cols)/cols));
+ const cellHeight=Math.max(112,Math.round((targetHeight-headerHeight-4*rows)/rows));
+ grid.style.width='max-content';
+ grid.style.maxWidth='none';
+ grid.style.minWidth='0';
+ grid.style.gridTemplateColumns=headerWidth+'px '+top.map(()=>cellWidth+'px').join(' ');
+ grid.style.gridTemplateRows=headerHeight+'px '+left.map(()=>cellHeight+'px').join(' ');
  const add=(cls,txt,sub,bg)=>{
    const d=document.createElement('div');d.className=cls;
    if(bg)d.style.backgroundColor=bg;
@@ -131,14 +144,20 @@ function drawNumeric(top,left,hide){
  };
  add('head','·',null,'#e9edf1');top.forEach((t,ci)=>add('head',textTerm(t),null,tone('cols',ci)));
  left.forEach((l,ri)=>{add('head',textTerm(l),null,tone('rows',ri));top.forEach((t,ci)=>add('cell',hide?'?':textTerm(product(l,t)),textTerm(l)+'('+textTerm(t)+')',mixedTone(ri,ci)))});
- $('stage').appendChild(grid);
+ const wrap=document.createElement('div');wrap.style.cssText='max-width:100%;overflow:auto;margin:0 auto';wrap.appendChild(grid);stage.appendChild(wrap);
 }
 function drawSquares(top,left,hide){
  const numeric=top.every(t=>t.pow===0&&t.c>=0)&&left.every(t=>t.pow===0&&t.c>=0);
  if(!numeric){drawNumeric(top,left,hide);return}
  const w=top.reduce((s,t)=>s+t.c,0),h=left.reduce((s,t)=>s+t.c,0);
  if(!w||!h){$('stage').textContent='Zero area: '+w+' × '+h+' = 0';return}
- const origin=96,available=Math.max(320,Math.min(1240,($('stage').clientWidth||1200)-28)),viewportH=Number.isFinite(window.innerHeight)?window.innerHeight:900,availableH=Math.min(760,Math.max(400,viewportH*.74)),unit=Math.max(3,Math.min(180,(available-origin-12)/w,availableH/h)),ns='http://www.w3.org/2000/svg';
+ const origin=78,stage=$('stage'),available=Math.max(260,Math.min(1240,(stage.clientWidth||1200)-28));
+ const viewportH=Number.isFinite(window.innerHeight)?window.innerHeight:900;
+ const stageTop=stage.getBoundingClientRect?Math.max(140,stage.getBoundingClientRect().top):180;
+ const steps=$('steps'),stepsHeight=steps.getBoundingClientRect?Math.max(74,steps.getBoundingClientRect().height):84;
+ // Reserve room for the equation and panel margins; shrink the unit grid to fit the visible screen.
+ const availableH=Math.max(230,Math.min(760,viewportH-stageTop-stepsHeight-44));
+ const unit=Math.max(2.5,Math.min(180,(available-origin-12)/w,(availableH-origin-8)/h)),ns='http://www.w3.org/2000/svg';
  const svg=document.createElementNS(ns,'svg');svg.setAttribute('width',w*unit+origin+3);svg.setAttribute('height',h*unit+origin+3);
  svg.setAttribute('viewBox','0 0 '+(w*unit+origin+3)+' '+(h*unit+origin+3));svg.style.cssText='display:block;margin:auto;max-width:none';
  const add=(tag,attrs)=>{let e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));svg.appendChild(e);return e};
@@ -146,7 +165,7 @@ function drawSquares(top,left,hide){
  left.forEach((row,ri)=>{let x=origin;top.forEach((col,ci)=>{
   const ww=col.c*unit,hh=row.c*unit;
   add('rect',{x,y,width:ww,height:hh,fill:mixedTone(ri,ci)});
-  if(unit>=4 && col.c<=140 && row.c<=140){const d=[];for(let j=1;j<col.c;j++)d.push('M'+(x+j*unit)+' '+y+'v'+hh);for(let j=1;j<row.c;j++)d.push('M'+x+' '+(y+j*unit)+'h'+ww);add('path',{d:d.join(' '),fill:'none',stroke:'#96acb9','stroke-width':.65})}
+  if(unit>=2.5 && col.c<=140 && row.c<=140){const d=[];for(let j=1;j<col.c;j++)d.push('M'+(x+j*unit)+' '+y+'v'+hh);for(let j=1;j<row.c;j++)d.push('M'+x+' '+(y+j*unit)+'h'+ww);add('path',{d:d.join(' '),fill:'none',stroke:'#96acb9','stroke-width':Math.min(.65,unit*.17)})}
   add('rect',{x,y,width:ww,height:hh,fill:'none',stroke:'#344d66','stroke-width':2.2});
   if(ww>=34&&hh>=28){const t=add('text',{x:x+ww/2,y:y+hh/2,'dominant-baseline':'central','text-anchor':'middle',fill:'#263b50','font-size':Math.max(18,Math.min(34,Math.min(ww/2.5,hh/2.5))),'font-weight':700});t.textContent=hide?'?':String(row.c*col.c)}
   x+=ww;
@@ -265,7 +284,7 @@ function drawAlgorithm(p,q,top,left,hide){
  $('stage').appendChild(d);
 }
 function syncModes(hasX,p,q){
- const allowSquares=!hasX&&p[0]>=0&&q[0]>=0&&p[0]*q[0]<1000;
+ const allowSquares=!hasX&&p[0]>=0&&q[0]>=0&&p[0]<=99&&q[0]<=99&&p[0]*q[0]<1000;
  const allowTiles=hasX;
  document.querySelectorAll('[data-mode]').forEach(btn=>{
   const unavailable=(btn.dataset.mode==='squares'&&!allowSquares)||
