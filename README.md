@@ -13,3 +13,9 @@ To host it with GitHub Pages: Settings → Pages → Build and deployment → De
 Five representations: unit squares, partitioned squares, algebra tiles, numeric area model, and algorithm. Enter factors and switch representations.
 
 The existing Vertical Crossing testing build remains at the repository root.
+
+## Integer Runner — Dr. Fin boss encounter (testing)
+
+[Open the isolated boss test build](https://keeganfinlayson.github.io/Testing/integer-run-boss/)
+
+Uses the original Integer Runner boss source and art, with two relocating operation pads, a telegraphed sign wave, and four-group attacks. The production Integer Runner repository is unchanged.
