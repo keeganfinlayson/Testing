@@ -22,3 +22,11 @@ This is an isolated boss experiment, **not yet integrated into the full runner c
 ## Test status
 
 Syntax checks and deterministic state-machine tests passed for pad relocation, sign wave behavior, four-blob deployment, opposite/same sign combat, zero-army defeat, and drawing invocation. A full browser input/performance pass remains to be completed.
+
+## Build v3 — November 17, 2026
+
+- Three smaller operation lights appear directly on the arena floor: two addition/subtraction options and one nonzero multiplication. No solid pad graphics or icons; operations and result previews float over the light.
+- Using a spot previews its next location with blue fiery ground-light before it arrives.
+- An addition/subtraction that **reaches or crosses zero** ends the run, even if the arithmetic result has the opposite sign. Example: −8 + 16 passes through zero and loses.
+- At least two currently active operations are always safe. If another spot is used while one is recharging, the previous spot completes its return first.
+- The faster boss rhythm, attacks, and sign wave from the prior local testing build are retained.
