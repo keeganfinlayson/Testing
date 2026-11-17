@@ -4,47 +4,82 @@ const params=new URLSearchParams(location.search),entry=Number(params.get('army'
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),signed=BlobMath.signed;
 function resize(){const r=c.getBoundingClientRect();W=r.width;H=r.height;const d=Math.min(devicePixelRatio||1,1.5);c.width=W*d;c.height=H*d;g.setTransform(d,0,0,d,0,0);half=Math.min(W*.26,H*.7);near=H*.86;horizon=H*.20;}addEventListener('resize',resize);resize();
 function project(x,z){const d=z-s.forward,sc=1/(1+Math.max(-130,d)/510),far=1/(1+1100/510);return {x:W/2+(x-s.camera)*half*sc,y:horizon+(near-horizon)*(sc-far)/(1-far),sc};}
-const locations=[{x:-1.38,z:720,kind:'mul',bank:-1},{x:-.83,z:515,kind:'add',bank:-1},{x:.83,z:515,kind:'add',bank:1},{x:1.38,z:720,kind:'mul',bank:1}];
-function options(value){return locations.map(p=>{const n=p.kind==='add'?(p.bank<0?-Math.max(8,value+8):Math.max(8,8-value)):Math.sign(value)===p.bank?2:-1;const op={kind:p.kind,n};return {...p,op,result:BlobMath.operation(value,op),label:p.kind==='add'?(n<0?'−'+Math.abs(n):'+'+n):(n<0?`×(−${Math.abs(n)})`:'×'+n)};});}
-// Two active math spots, one on each side. A used spot relocates to the
-// other position in its bank after a visible recharge interval.
-function nextPad(bank){
- const places=locations.filter(p=>p.bank===bank),turn=s.padVisits[bank]++;
- const site=places[turn%places.length];
- const option=options(s.value).find(p=>p.x===site.x&&p.z===site.z);
- return {...option,active:true,readyAt:0,id:`${bank}-${turn}`};
+// Three small lights on the stone floor: two additive operations and one
+// nonzero multiplication. Each light has two locations so its next arrival
+// can be telegraphed on the floor before it becomes active.
+const locations={
+ addA:[{x:-1.06,z:568},{x:-1.06,z:762}],
+ addB:[{x:1.06,z:568},{x:1.06,z:762}],
+ mul:[{x:0,z:548},{x:0,z:706}]
+};
+const padDistance=(p)=>Math.hypot((p.x-s.x)/.23,(p.z-s.z)/47);
+const crossesZero=(value,op)=>{
+ if(op.kind!=='add'&&op.kind!=='sub')return false;
+ const result=BlobMath.operation(value,op);
+ return result===0||Math.sign(result)!==Math.sign(value);
+};
+function additive(delta){
+ const op=delta>0?{kind:'add',n:delta}:{kind:'sub',n:-delta};
+ return {...op,label:delta>0?'+'+delta:'−'+(-delta)};
 }
-function refreshPads(){s.padVisits={[-1]:0,[1]:0};s.pads=[nextPad(-1),nextPad(1)];s.padReady=true;}
-function syncPads(){
- const all=options(s.value);
- s.pads=s.pads.map(p=>{
-  const newValue=all.find(o=>o.x===p.x&&o.z===p.z);
-  return {...p,op:newValue.op,result:newValue.result,label:newValue.label};
+function options(value){
+ const sign=Math.sign(value)||1,mag=Math.abs(value);
+ // Examples: −8 → (−8 is safe), (+16 crosses zero), (×(−1) is safe).
+ // If only two lights are available, *both* remaining lights are safe.
+ const safeChange=(s.round%3===1&&mag>4)?-sign*Math.min(4,mag-1):sign*8;
+ const unsafeChange=-sign*(mag+8);
+ const twoActive=s.pads.filter(p=>p.active).length<3;
+ const a=additive(safeChange);
+ const b=additive(twoActive?sign*6:unsafeChange);
+ const factor=(s.round+s.padVisits.mul)%3===0?2:-1;
+ const mult={kind:'mul',n:factor,label:factor<0?'×(−1)':'×2'};
+ const byRole={addA:a,addB:b,mul:mult};
+ return Object.keys(byRole).map(role=>{
+  const item=byRole[role];
+  const result=BlobMath.operation(value,item);
+  return {role,kind:item.kind,op:{kind:item.kind,n:item.n},label:item.label,result,safe:!crossesZero(value,item)};
  });
 }
+function nextPad(role){
+ const turn=s.padVisits[role]++;
+ return {...locations[role][turn%2],role,id:`${role}-${turn}`,active:true,readyAt:0,warnAt:0};
+}
+function refreshPads(){
+ s.padVisits={addA:0,addB:0,mul:0};
+ s.pads=['addA','addB','mul'].map(nextPad);
+ s.padReady=true;
+ syncPads();
+}
+function syncPads(){
+ const optionsByRole=Object.fromEntries(options(s.value).map(p=>[p.role,p]));
+ for(const pad of s.pads){
+  const o=optionsByRole[pad.role];
+  Object.assign(pad,{op:o.op,result:o.result,label:o.label,safe:o.safe});
+ }
+}
 function updatePads(){
- for(let i=0;i<s.pads.length;i++){
-  const pad=s.pads[i];
+ for(const pad of s.pads){
   if(!pad.active&&s.arenaClock>=pad.readyAt){
-   s.pads[i]=nextPad(pad.bank);
-   // Entering a newly created pad requires a fresh crossing.
-   if(Math.hypot(s.pads[i].x-s.x,(s.pads[i].z-s.z)/240)<.17)s.padReady=false;
+   pad.active=true;
+   // A pad forming under the army must not activate without a new entry.
+   if(padDistance(pad)<1)s.padReady=false;
+   note('A new operation light has appeared.');
   }
  }
 }
 function note(text){$('notice').textContent=text;s.log.push(text);if(s.log.length>20)s.log.shift();}
-function reset(){paused=false;$('pause').textContent='Pause';s={mode:'battle',forward:330,camera:0,x:0,z:460,tx:0,tz:460,value:entryArmy,hp:100,visualHP:100,sign:1,nextSign:-1,phase:'warn',timer:2.2,round:0,padVisits:{[-1]:0,[1]:0},padReady:true,arenaClock:0,pads:[],pulses:[],log:[],flip:0,wave:null,hit:0,placeAnim:0,poseMix:0,end:false,contact:0,canceling:false,absorbing:false,visualArmy:Math.abs(entryArmy)};refreshPads();note('Boss checkpoint · Dr. Fin starts at +100.');beginPhase('warn');$('result').hidden=true;}
+function reset(){paused=false;$('pause').textContent='Pause';s={mode:'battle',forward:330,camera:0,x:0,z:460,tx:0,tz:460,value:entryArmy,hp:100,visualHP:100,sign:1,nextSign:-1,phase:'warn',timer:2.2,round:0,padVisits:{addA:0,addB:0,mul:0},padReady:true,arenaClock:0,pads:[],pulses:[],log:[],flip:0,wave:null,hit:0,placeAnim:0,poseMix:0,end:false,contact:0,canceling:false,absorbing:false,visualArmy:Math.abs(entryArmy)};refreshPads();note('Boss checkpoint · Dr. Fin starts at +100.');beginPhase('warn');$('result').hidden=true;}
 function deploy(){
  s.placeAnim=.95;
  for(let i=0;i<4;i++)s.pulses.push({x:(i-1.5)*.22,z:822,value:s.sign*4,life:22});
  note(`Four ${s.sign>0?'positive':'negative'} groups of 4 deployed. Their colors do not change.`);
 }
-function beginPhase(name){s.phase=name;s.nextSign=-s.sign;s.timer=({warn:2.2,wave:1.7,attack:3.4,open:6.5,recover:1.2})[name];
+function beginPhase(name){s.phase=name;s.nextSign=-s.sign;s.timer=({warn:1.9,wave:1.4,attack:3.0,open:5.8,recover:1.0})[name];
  const messages={warn:`SIGN WAVE INCOMING: Dr. Fin is turning ${s.nextSign>0?'positive':'negative'}. ×(−1) flips your army on contact.`,wave:'The sign wave is moving toward you — touching it multiplies your army by −1.',attack:'Four groups of 4 are advancing. Same signs add, opposite signs cancel.',open:'Dr. Fin is exposed. Opposite signs hurt him; matching signs heal him.',recover:'Recover and prepare for the next sign wave.'};note(messages[name]);}
 
 function pulseResult(v,p){return v*p<0&&Math.abs(v)<=Math.abs(p)?0:v+p;}
 function noteOnce(text){if(!s.contactNote){note(text);s.contactNote=true;}}
-function stop(win){if(win&&params.has('embedded'))parent.postMessage({type:'integer-boss-win',value:s.value},location.origin);s.end=true;s.mode=win?'victory':'lost';$('result').hidden=false;$('outcome').textContent=win?'Boss defeated!':'Zero — your swarm is gone.';note(win?'You canceled the boss body. Forward running resumes.':'Retry: absorb matching pulses, then grow before touching the opposite boss.');}
+function stop(win,reason){if(win&&params.has('embedded'))parent.postMessage({type:'integer-boss-win',value:s.value},location.origin);s.end=true;s.mode=win?'victory':'lost';$('result').hidden=false;$('outcome').textContent=win?'Boss defeated!':(reason||'Zero — your swarm is gone.');note(win?'You canceled the boss body. Forward running resumes.':(reason||'Retry: absorb matching pulses, then grow before touching the opposite boss.'));}
 function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim=Math.max(0,s.placeAnim-dt);s.hit=Math.max(0,s.hit-dt);s.visualHP+=(s.hp-s.visualHP)*Math.min(1,dt*7);s.visualArmy+=(Math.abs(s.value)-s.visualArmy)*Math.min(1,dt*9);
  if(s.mode==='approach'){s.forward+=150*dt;s.z=s.forward+100;s.tz=s.z;if(s.forward>=330){s.forward=330;s.z=430;s.tz=430;s.mode='battle';beginPhase('place');deploy();}return;}
  if(s.mode==='exit'){s.forward+=150*dt;s.timer-=dt;if(s.timer<=0)stop(true);return;}
@@ -56,14 +91,31 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
  if(dist<.35){const factor=.35/Math.max(.001,dist);s.x*=factor;s.z=850+(s.z-850)*factor;}
  s.camera+=(s.x*.55-s.camera)*Math.min(1,dt*9);
  updatePads();
- const tile=s.pads.findIndex(p=>p.active&&Math.hypot(p.x-s.x,(p.z-s.z)/240)<.30);
+ const tile=s.pads.findIndex(p=>p.active&&padDistance(p)<1);
  if(tile<0)s.padReady=true;
  if(s.padReady&&tile>=0){
-  const pad=s.pads[tile],old=s.value;s.value=BlobMath.operation(old,pad.op);
-  s.padReady=false;pad.active=false;pad.readyAt=s.arenaClock+1.8;
-  note(`${signed(old)} ${pad.label} = ${signed(s.value)}. The ${pad.bank<0?'negative':'positive'} spot is relocating.`);
+  const pad=s.pads[tile],old=s.value,result=BlobMath.operation(old,pad.op);
+  s.padReady=false;
+  if(crossesZero(old,pad.op)){
+   // Crossing zero is a loss even when the signed answer is nonzero.
+   // Thus −8 + 16 = +8 loses on the way through zero.
+   s.value=0;
+   stop(false,`${signed(old)} ${pad.label} would pass through zero. Army lost!`);
+   return;
+  }
+  s.value=result;
   if(!s.value){stop(false);return;}
-  syncPads();
+  // If another light is still relocating, finish its arrival before
+  // deactivating this one. This keeps two usable choices at all times,
+  // even when the player reaches consecutive spots rapidly.
+  const previous=s.pads.find(p=>!p.active);
+  if(previous){previous.active=true;previous.readyAt=0;}
+  // Relocate immediately as an inactive target. The blue fire appears at
+  // the NEXT position before the actual light turns on.
+  const next=nextPad(pad.role);
+  s.pads[tile]={...next,active:false,warnAt:s.arenaClock+.18,readyAt:s.arenaClock+1.38};
+  syncPads(); // With only two active spots, BOTH are guaranteed safe.
+  note(`${signed(old)} ${pad.label} = ${signed(s.value)}. A new light is forming elsewhere.`);
  }
 
 
@@ -82,7 +134,7 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
  if(s.phase==='wave')s.flip+=dt*9;
  if(s.wave){
   const previous=s.wave.z;
-  s.wave.z-=285*dt;
+  s.wave.z-=320*dt;
   const crossed=(previous>=s.z&&s.wave.z<=s.z)||Math.abs(s.wave.z-s.z)<15;
   if(!s.wave.hit&&crossed){
    s.value=-s.value;s.wave.hit=true;syncPads();
@@ -92,7 +144,7 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
  }
 
 
- for(const p of s.pulses){const dx=s.x-p.x,dz=(s.z-p.z)/240,l=Math.hypot(dx,dz)||1;p.x+=dx/l*.24*dt;p.z+=dz/l*58*dt;p.life-=dt;if(Math.hypot(p.x-s.x,(p.z-s.z)/240)<.2&&p.life>0){const old=s.value;s.value=pulseResult(old,p.value);note(`${signed(old)} + (${signed(p.value)}) = ${signed(s.value)} ${old*p.value>0?'· absorbed':'· canceled'}`);p.life=0;if(!s.value){stop(false);return;}}}s.pulses=s.pulses.filter(p=>p.life>0);syncPads();
+ for(const p of s.pulses){const dx=s.x-p.x,dz=(s.z-p.z)/240,l=Math.hypot(dx,dz)||1;p.x+=dx/l*.28*dt;p.z+=dz/l*68*dt;p.life-=dt;if(Math.hypot(p.x-s.x,(p.z-s.z)/240)<.2&&p.life>0){const old=s.value;s.value=pulseResult(old,p.value);note(`${signed(old)} + (${signed(p.value)}) = ${signed(s.value)} ${old*p.value>0?'· absorbed':'· canceled'}`);p.life=0;if(!s.value){stop(false);return;}}}s.pulses=s.pulses.filter(p=>p.life>0);syncPads();
 }
 function poly(points,color){g.fillStyle=color;g.beginPath();points.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fill();}
 function label(x,y,text,color,size=15){g.font=`800 ${size}px system-ui`;const w=g.measureText(text).width+14;g.fillStyle=color;g.beginPath();g.roundRect(x-w/2,y-size*.7,w,size+10,6);g.fill();g.fillStyle='#fff';g.textAlign='center';g.fillText(text,x,y+4);}
@@ -151,24 +203,57 @@ function draw(){scenery();supports();
  for(let i=0;i<40;i++){const a=outline[i],b=outline[i+1];masonryFace([a,b,{x:b.x,y:b.y+34*b.sc},{x:a.x,y:a.y+34*a.sc}],.26);}
  poly(outline,'#c5aa80');paving(outline,440,930,true);line(outline,'#d8c49b',3);
  arenaWalls();
- // Only one red and one blue operation spot are active at a time.
+ // These are spots of light cast onto the floor, not discs or icons.
+ // The mathematical labels float above the light so they stay legible.
  if(s.mode!=='approach')for(const pad of s.pads){
-  if(!pad.active)continue;
-  const p=project(pad.x,pad.z),rx=half*.32*p.sc,ry=rx*.52;
-  const pulse=.5+.5*Math.sin(clock*4+pad.bank),glow=rx*(1.23+.09*pulse);
-  g.save();g.globalAlpha=.24+.13*pulse;g.fillStyle=pad.bank<0?'#eb6574':'#56d4fc';
-  g.beginPath();g.ellipse(p.x,p.y,glow,glow*.55,0,0,7);g.fill();g.restore();
-  g.fillStyle='#152c3544';g.beginPath();g.ellipse(p.x+2,p.y+6,rx+4,ry+3,0,0,7);g.fill();
-  g.fillStyle='#8a7b5e';g.beginPath();g.ellipse(p.x,p.y+3,rx+3,ry+3,0,0,7);g.fill();
-  const grad=g.createLinearGradient(p.x-rx,p.y-ry,p.x+rx,p.y+ry);
-  grad.addColorStop(0,pad.bank<0?'#e88e92':'#80d8ea');grad.addColorStop(1,pad.bank<0?'#9c3445':'#246382');
-  g.fillStyle=grad;g.strokeStyle='#f3eac6';g.lineWidth=2.4;
-  g.beginPath();g.ellipse(p.x,p.y,rx,ry,0,0,7);g.fill();g.stroke();
-  g.fillStyle='#fff';g.textAlign='center';g.font=`800 ${Math.max(13,22*p.sc)}px system-ui`;
-  g.fillText(pad.label,p.x,p.y+4);
-  g.font=`700 ${Math.max(10,14*p.sc)}px system-ui`;
-  g.fillText(`→ ${signed(pad.result)}`,p.x,p.y+ry+16);
+  const p=project(pad.x,pad.z),rx=half*.205*p.sc,ry=rx*.53;
+  const warning=!pad.active&&s.arenaClock>=pad.warnAt&&s.arenaClock<pad.readyAt;
+  if(!pad.active&&!warning)continue;
+  const progress=warning?clamp((s.arenaClock-pad.warnAt)/(pad.readyAt-pad.warnAt),0,1):1;
+  const flicker=.82+.18*Math.sin(clock*9+pad.x*3);
+  const power=(warning?.3+progress*.7:1)*flicker;
+  g.save();g.translate(p.x,p.y);
+  // Radial gradients are stretched into ground-plane ovals; no opaque button.
+  g.save();g.scale(1,.53);
+  const halo=g.createRadialGradient(0,0,1,0,0,rx*2.1);
+  halo.addColorStop(0,`rgba(190,250,255,${.68*power})`);
+  halo.addColorStop(.28,`rgba(79,220,255,${.48*power})`);
+  halo.addColorStop(.65,`rgba(13,122,255,${.19*power})`);
+  halo.addColorStop(1,'rgba(13,122,255,0)');
+  g.fillStyle=halo;g.beginPath();g.arc(0,0,rx*2.1,0,Math.PI*2);g.fill();
+  g.restore();
+  // Moving flame-like tongues of blue light run around the edge of the spot.
+  g.shadowColor='#6ae6ff';g.shadowBlur=rx*.5;
+  for(let j=0;j<9;j++){
+   const angle=clock*(warning?1.7:2.5)+j*Math.PI*2/9;
+   const orbit=rx*(.8+.13*Math.sin(clock*6+j));
+   const x=Math.cos(angle)*orbit, y=Math.sin(angle)*ry*.9;
+   const lift=ry*(.18+.32*(.5+.5*Math.sin(clock*7+j*2)))*power;
+   g.strokeStyle=`rgba(113,226,255,${(.35+.45*power).toFixed(3)})`;
+   g.lineWidth=Math.max(1,1.8*p.sc);
+   g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+rx*.08,y-lift*.6,x+rx*.12,y-lift);g.stroke();
+  }
+  g.shadowBlur=0;
+  const breathing=1+.06*Math.sin(clock*7+pad.z);
+  g.strokeStyle=`rgba(158,244,255,${.3+.5*power})`;
+  g.lineWidth=Math.max(1.1,1.8*p.sc);
+  g.beginPath();g.ellipse(0,0,rx*breathing,ry*breathing,0,0,Math.PI*2);g.stroke();
+  g.restore();
+  if(warning){
+   g.fillStyle='#dbfaff';g.textAlign='center';g.font=`700 ${Math.max(11,15*p.sc)}px system-ui`;
+   g.shadowColor='#3dcfff';g.shadowBlur=8;
+   g.fillText('FORMING',p.x,p.y-ry-11);g.shadowBlur=0;
+  }else{
+   g.save();g.textAlign='center';
+   g.shadowColor='#002c42';g.shadowBlur=6;
+   g.font=`800 ${Math.max(14,21*p.sc)}px system-ui`;
+   g.fillStyle='#ecfdff';g.fillText(pad.label,p.x,p.y-ry-15);
+   g.font=`700 ${Math.max(11,14*p.sc)}px system-ui`;
+   g.fillStyle='#dcf7ff';g.fillText(`→ ${signed(pad.result)}`,p.x,p.y-ry-1);
+   g.restore();
+  }
  }
+
 
  const boss=project(0,850),scale=.4+.6*Math.sqrt(Math.max(0,s.visualHP)/100),h=H*.34*boss.sc*scale,w=h*1.05;
  g.fillStyle='#25332d44';g.beginPath();g.ellipse(boss.x+4,boss.y+2,w*.38,h*.07,0,0,7);g.fill();
@@ -190,7 +275,7 @@ function draw(){scenery();supports();
 
  label(boss.x,boss.y-h-20,`${signed(s.sign*s.hp)} BOSS`,s.sign>0?'#126caa':'#b93451',Math.max(12,16*boss.sc));
  if(s.phase==='warn')label(boss.x,boss.y-h-45,`Turning: ${s.nextSign>0?'+':'−'}`,s.nextSign>0?'#126caa':'#b93451',14);
- if(s.wave){const q=project(0,s.wave.z);g.strokeStyle='#fff';g.lineWidth=5;g.beginPath();g.ellipse(q.x,q.y,half*1.28*q.sc,14*q.sc,0,0,7);g.stroke();label(q.x,q.y-8,'×(−1)','#794c97',14);}
+ if(s.wave){const q=project(0,s.wave.z),swell=.78+.22*Math.sin(clock*10);g.strokeStyle='#dff8ff';g.lineWidth=6;g.beginPath();g.ellipse(q.x,q.y,half*1.32*q.sc,16*q.sc*swell,0,0,7);g.stroke();g.strokeStyle='#7be7ff';g.lineWidth=2.2;g.beginPath();g.ellipse(q.x,q.y,half*1.22*q.sc,10*q.sc*swell,0,0,7);g.stroke();label(q.x,q.y-8,'×(−1)','#794c97',14);}
  if(s.phase==='wave'){g.strokeStyle=s.sign>0?'#7ae7ff':'#ff8eaf';g.lineWidth=4;g.beginPath();g.ellipse(boss.x,boss.y-h*.5,w*.7,h*.55,s.flip*.3,0,Math.PI*1.8);g.stroke();}
  for(const p of s.pulses){const q=project(p.x,p.z),r=13*q.sc;g.drawImage(creatures[p.value<0?-1:1][0],q.x-r,q.y-r*2,r*2,r*2);label(q.x,q.y+12,signed(p.value),p.value>0?'#147bbb':'#c33953',11);}
  const player=project(s.x,s.z),n=Math.min(65,Math.max(0,Math.round(s.visualArmy))),r=Math.min(10,H*.016)*player.sc,spread=Math.min(H*.10,Math.sqrt(n)*r*1.1);
@@ -209,5 +294,5 @@ $('full').onclick=async()=>{try{if(document.fullscreenElement)await document.exi
 for(const button of document.querySelectorAll('[data-x]')){button.onpointerdown=e=>{e.preventDefault();held={x:+button.dataset.x,z:+button.dataset.z};button.setPointerCapture(e.pointerId);};button.onpointerup=button.onpointercancel=()=>held={x:0,z:0};}
 addEventListener('keydown',e=>{if(document.querySelector('dialog[open]'))return;const key=e.key.length===1?e.key.toLowerCase():e.key;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(key))e.preventDefault();if(key===' '&&!e.repeat)pause();if(key==='r'&&!e.repeat)reset();keys.add(key);});addEventListener('keyup',e=>keys.delete(e.key.length===1?e.key.toLowerCase():e.key));addEventListener('blur',()=>{keys.clear();held={x:0,z:0};if(!s.end){paused=true;$('pause').textContent='Resume';}});
 $('menu').onclick=()=>{if(params.has('embedded'))parent.postMessage({type:'integer-boss-menu'},location.origin);else location.href='https://keeganfinlayson.github.io/Integer-Run/';};
-window.BossLab={snapshot:()=>JSON.parse(JSON.stringify(s)),project:(x,z)=>project(x,z),options,pulseResult,draw,test:(patch)=>Object.assign(s,patch),step};reset();if(params.has('embedded')||params.has('autostart')){$('intro').close();}else paused=true;requestAnimationFrame(frame);
+window.BossLab={snapshot:()=>JSON.parse(JSON.stringify(s)),project:(x,z)=>project(x,z),options,crossesZero,pulseResult,draw,test:(patch)=>Object.assign(s,patch),step};reset();if(params.has('embedded')||params.has('autostart')){$('intro').close();}else paused=true;requestAnimationFrame(frame);
 })();
