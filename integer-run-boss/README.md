@@ -30,3 +30,12 @@ Syntax checks and deterministic state-machine tests passed for pad relocation, s
 - An addition/subtraction that **reaches or crosses zero** ends the run, even if the arithmetic result has the opposite sign. Example: −8 + 16 passes through zero and loses.
 - At least two currently active operations are always safe. If another spot is used while one is recharging, the previous spot completes its return first.
 - The faster boss rhythm, attacks, and sign wave from the prior local testing build are retained.
+
+## Build v4 — Four-direction attack and ground-light operations
+
+- Four groups enter from four different locations along the arena rim on independent paths. Exactly two are blue/positive, two red/negative; each group carries a different integer value.
+- Each group appears as a small visible swarm of blobs, labeled only with its signed integer (no multiplication tokens).
+- Three operations remain: two addition/subtraction and one multiplication. The operation is written in bright tilted light directly on the ground, without outcome previews.
+- Using a spot fades it out and causes its next spot to form with a warning at a randomized position around the arena.
+- The zero-crossing loss rule and guarantee of two safe active operations remain intact.
+- Tested in Chromium: 24 four-group spawn samples, sign/value/separation checks, zero-crossing and safe-operation checks, pad reappearance, and page rendering.
