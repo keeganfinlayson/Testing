@@ -4,14 +4,28 @@ const params=new URLSearchParams(location.search),entry=Number(params.get('army'
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),signed=BlobMath.signed;
 function resize(){const r=c.getBoundingClientRect();W=r.width;H=r.height;const d=Math.min(devicePixelRatio||1,1.5);c.width=W*d;c.height=H*d;g.setTransform(d,0,0,d,0,0);half=Math.min(W*.26,H*.7);near=H*.86;horizon=H*.20;}addEventListener('resize',resize);resize();
 function project(x,z){const d=z-s.forward,sc=1/(1+Math.max(-130,d)/510),far=1/(1+1100/510);return {x:W/2+(x-s.camera)*half*sc,y:horizon+(near-horizon)*(sc-far)/(1-far),sc};}
-// Three small lights on the stone floor: two additive operations and one
-// nonzero multiplication. Each light has two locations so its next arrival
-// can be telegraphed on the floor before it becomes active.
-const locations={
- addA:[{x:-1.06,z:568},{x:-1.06,z:762}],
- addB:[{x:1.06,z:568},{x:1.06,z:762}],
- mul:[{x:0,z:548},{x:0,z:706}]
-};
+// Two additive lights and one multiplication light. All positions are
+// independent spots on the stone, selected afresh around the arena.
+const roles=['addA','addB','mul'];
+const random=(a,b)=>a+Math.random()*(b-a);
+function locationForPad(role){
+ const other=(s.pads||[]).filter(p=>p.role!==role);
+ const older=(s.pads||[]).find(p=>p.role===role);
+ let best=null,bestScore=-Infinity;
+ for(let attempt=0;attempt<90;attempt++){
+  const sector={addA:3.65,addB:5.75,mul:1.75}[role];
+  const angle=attempt<12?sector+random(-.56,.56):random(0,2*Math.PI);
+  const radial=random(.57,.77),x=1.75*radial*Math.cos(angle),z=680+235*radial*Math.sin(angle);
+  const bossDist=Math.hypot(x,(z-850)/240);
+  const playerDist=Math.hypot(x-s.x,(z-s.z)/240);
+  const peerDist=other.length?Math.min(...other.map(p=>Math.hypot(x-p.x,(z-p.z)/240))):3;
+  const oldDist=older?Math.hypot(x-older.x,(z-older.z)/240):3;
+  const score=Math.min(peerDist*1.2,oldDist*.9,playerDist*.85,bossDist);
+  if(score>bestScore){bestScore=score;best={x,z};}
+  if(peerDist>.78&&oldDist>.68&&playerDist>.5&&bossDist>.48)return {x,z};
+ }
+ return best;
+}
 const padDistance=(p)=>Math.hypot((p.x-s.x)/.23,(p.z-s.z)/47);
 const crossesZero=(value,op)=>{
  if(op.kind!=='add'&&op.kind!=='sub')return false;
@@ -42,11 +56,12 @@ function options(value){
 }
 function nextPad(role){
  const turn=s.padVisits[role]++;
- return {...locations[role][turn%2],role,id:`${role}-${turn}`,active:true,readyAt:0,warnAt:0};
+ return {...locationForPad(role),role,id:`${role}-${turn}`,active:true,
+  readyAt:0,warnAt:0,bornAt:s.arenaClock};
 }
 function refreshPads(){
  s.padVisits={addA:0,addB:0,mul:0};
- s.pads=['addA','addB','mul'].map(nextPad);
+ s.pads=[]; for(const role of roles)s.pads.push(nextPad(role));
  s.padReady=true;
  syncPads();
 }
@@ -61,6 +76,7 @@ function updatePads(){
  for(const pad of s.pads){
   if(!pad.active&&s.arenaClock>=pad.readyAt){
    pad.active=true;
+   pad.bornAt=s.arenaClock;
    // A pad forming under the army must not activate without a new entry.
    if(padDistance(pad)<1)s.padReady=false;
    note('A new operation light has appeared.');
@@ -68,14 +84,31 @@ function updatePads(){
  }
 }
 function note(text){$('notice').textContent=text;s.log.push(text);if(s.log.length>20)s.log.shift();}
-function reset(){paused=false;$('pause').textContent='Pause';s={mode:'battle',forward:330,camera:0,x:0,z:460,tx:0,tz:460,value:entryArmy,hp:100,visualHP:100,sign:1,nextSign:-1,phase:'warn',timer:2.2,round:0,padVisits:{addA:0,addB:0,mul:0},padReady:true,arenaClock:0,pads:[],pulses:[],log:[],flip:0,wave:null,hit:0,placeAnim:0,poseMix:0,end:false,contact:0,canceling:false,absorbing:false,visualArmy:Math.abs(entryArmy)};refreshPads();note('Boss checkpoint · Dr. Fin starts at +100.');beginPhase('warn');$('result').hidden=true;}
+function reset(){paused=false;$('pause').textContent='Pause';s={mode:'battle',forward:330,camera:0,x:0,z:460,tx:0,tz:460,value:entryArmy,hp:100,visualHP:100,sign:1,nextSign:-1,phase:'warn',timer:2.2,round:0,padVisits:{addA:0,addB:0,mul:0},padReady:true,arenaClock:0,pads:[],pulses:[],padGhosts:[],log:[],flip:0,wave:null,hit:0,placeAnim:0,poseMix:0,end:false,contact:0,canceling:false,absorbing:false,visualArmy:Math.abs(entryArmy)};refreshPads();note('Boss checkpoint · Dr. Fin starts at +100.');beginPhase('warn');$('result').hidden=true;}
 function deploy(){
  s.placeAnim=.95;
- for(let i=0;i<4;i++)s.pulses.push({x:(i-1.5)*.22,z:822,value:s.sign*4,life:22});
- note(`Four ${s.sign>0?'positive':'negative'} groups of 4 deployed. Their colors do not change.`);
+ // Four independently moving armies enter from four separate parts of the
+ // arena's outer rim: exactly two blue/positive and two red/negative.
+ // Every group has a different value; none is a multiplication token.
+ const values=[4,8,12,16,20,24];
+ for(let i=values.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[values[i],values[j]]=[values[j],values[i]];}
+ values.length=4;
+ const signs=Math.random()<.5?[1,-1,1,-1]:[-1,1,-1,1];
+ const newPulses=[];
+ for(let i=0;i<4;i++){
+  const theta=Math.PI*(.25+i*.5)+random(-.13,.13),radius=.89;
+  const x=1.75*radius*Math.cos(theta),z=680+235*radius*Math.sin(theta);
+  const waypoint={x:.58*Math.cos(theta+1.3),z:680+235*.45*Math.sin(theta+1.3)};
+  const dx=waypoint.x-x,dz=(waypoint.z-z)/240,len=Math.hypot(dx,dz)||1;
+  const speed=random(.46,.56),value=signs[i]*values[i];
+  newPulses.push({id:`${s.round}-${i}`,x,z,vx:dx/len*speed,vz:dz/len*speed,
+   speed,value,life:20,age:0,offsetX:random(-.48,.48),offsetZ:random(-.35,.35)});
+ }
+ s.pulses=newPulses; // Exactly four entering groups at a time.
+ note('Four groups entered from the arena edge: two blue (+), two red (−), each a different value.');
 }
 function beginPhase(name){s.phase=name;s.nextSign=-s.sign;s.timer=({warn:1.9,wave:1.4,attack:3.0,open:5.8,recover:1.0})[name];
- const messages={warn:`SIGN WAVE INCOMING: Dr. Fin is turning ${s.nextSign>0?'positive':'negative'}. ×(−1) flips your army on contact.`,wave:'The sign wave is moving toward you — touching it multiplies your army by −1.',attack:'Four groups of 4 are advancing. Same signs add, opposite signs cancel.',open:'Dr. Fin is exposed. Opposite signs hurt him; matching signs heal him.',recover:'Recover and prepare for the next sign wave.'};note(messages[name]);}
+ const messages={warn:`SIGN WAVE INCOMING: Dr. Fin is turning ${s.nextSign>0?'positive':'negative'}. ×(−1) flips your army on contact.`,wave:'The sign wave is moving toward you — touching it multiplies your army by −1.',attack:'Four different armies enter from the arena edge: two blue and two red. Same signs add; opposite signs cancel.',open:'Dr. Fin is exposed. Opposite signs hurt him; matching signs heal him.',recover:'Recover and prepare for the next sign wave.'};note(messages[name]);}
 
 function pulseResult(v,p){return v*p<0&&Math.abs(v)<=Math.abs(p)?0:v+p;}
 function noteOnce(text){if(!s.contactNote){note(text);s.contactNote=true;}}
@@ -109,11 +142,12 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
   // deactivating this one. This keeps two usable choices at all times,
   // even when the player reaches consecutive spots rapidly.
   const previous=s.pads.find(p=>!p.active);
-  if(previous){previous.active=true;previous.readyAt=0;}
-  // Relocate immediately as an inactive target. The blue fire appears at
-  // the NEXT position before the actual light turns on.
+  if(previous){previous.active=true;previous.readyAt=0;previous.bornAt=s.arenaClock;}
+  // After use, the light fades from its old location; the new random
+  // location starts glowing before that operation becomes available.
+  s.padGhosts.push({...pad,expires:s.arenaClock+.52});
   const next=nextPad(pad.role);
-  s.pads[tile]={...next,active:false,warnAt:s.arenaClock+.18,readyAt:s.arenaClock+1.38};
+  s.pads[tile]={...next,active:false,warnAt:s.arenaClock+.27,readyAt:s.arenaClock+1.58};
   syncPads(); // With only two active spots, BOTH are guaranteed safe.
   note(`${signed(old)} ${pad.label} = ${signed(s.value)}. A new light is forming elsewhere.`);
  }
@@ -121,6 +155,7 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
 
  const contactAllowed=s.phase==='attack'||s.phase==='open';s.canceling=contactAllowed&&dist<.43&&s.value*s.sign<0;s.absorbing=contactAllowed&&dist<.43&&s.value*s.sign>0;
  if(s.canceling||s.absorbing){s.contact+=dt*10;const amount=Math.min(Math.floor(s.contact),Math.abs(s.value),s.absorbing?Infinity:s.hp);if(amount){s.contact-=amount;s.hp+=s.absorbing?amount:-amount;s.value=Math.sign(s.value)*(Math.abs(s.value)-amount);s.hit=.12;if(!s.value){stop(false);return;}if(!s.hp){s.mode='exit';s.timer=2.2;note('Boss canceled completely. Forward travel resumes.');return;}}noteOnce(s.absorbing?'Same sign: the boss absorbs your army and grows. Retreat!':'Opposite signs: both shrink. Retreat before zero.');}else{s.contact=0;s.contactNote=false;}
+ s.padGhosts=s.padGhosts.filter(p=>p.expires>s.arenaClock);
  s.timer-=dt;
  if(s.timer<=0){
   const next={warn:'wave',wave:'attack',attack:'open',open:'recover',recover:'warn'}[s.phase];
@@ -144,7 +179,32 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
  }
 
 
- for(const p of s.pulses){const dx=s.x-p.x,dz=(s.z-p.z)/240,l=Math.hypot(dx,dz)||1;p.x+=dx/l*.28*dt;p.z+=dz/l*68*dt;p.life-=dt;if(Math.hypot(p.x-s.x,(p.z-s.z)/240)<.2&&p.life>0){const old=s.value;s.value=pulseResult(old,p.value);note(`${signed(old)} + (${signed(p.value)}) = ${signed(s.value)} ${old*p.value>0?'· absorbed':'· canceled'}`);p.life=0;if(!s.value){stop(false);return;}}}s.pulses=s.pulses.filter(p=>p.life>0);syncPads();
+ for(const p of s.pulses){
+  p.age+=dt;p.life-=dt;
+  // The first moment is an independent diagonal arrival, not a beeline at
+  // the player's center. Later each group gently homes toward a DIFFERENT
+  // offset near the army, so groups do not stack on one another.
+  if(p.age>1.15){
+   const targetX=s.x+p.offsetX,targetZ=s.z+p.offsetZ*240;
+   const dx=targetX-p.x,dz=(targetZ-p.z)/240,len=Math.hypot(dx,dz)||1;
+   const steer=Math.min(1,dt*.72);
+   const vx=p.vx*(1-steer)+(dx/len)*p.speed*steer;
+   const vz=p.vz*(1-steer)+(dz/len)*p.speed*steer;
+   const norm=Math.hypot(vx,vz)||1;
+   p.vx=vx/norm*p.speed;p.vz=vz/norm*p.speed;
+  }
+  p.x+=p.vx*dt;p.z+=p.vz*240*dt;
+  const boundary=Math.hypot(p.x/1.75,(p.z-680)/235);
+  if(boundary>.9){p.x*=.9/boundary;p.z=680+(p.z-680)*.9/boundary;
+   const dx=-p.x,dz=(680-p.z)/240,len=Math.hypot(dx,dz)||1;
+   p.vx=dx/len*p.speed;p.vz=dz/len*p.speed;}
+  if(Math.hypot(p.x-s.x,(p.z-s.z)/240)<.22&&p.life>0){
+   const old=s.value;s.value=pulseResult(old,p.value);
+   note(`${signed(old)} + (${signed(p.value)}) = ${signed(s.value)} ${old*p.value>0?'· absorbed':'· canceled'}`);
+   p.life=0;if(!s.value){stop(false,'Zero crossed while meeting an opposing swarm.');return;}
+  }
+ }
+ s.pulses=s.pulses.filter(p=>p.life>0);syncPads();
 }
 function poly(points,color){g.fillStyle=color;g.beginPath();points.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fill();}
 function label(x,y,text,color,size=15){g.font=`800 ${size}px system-ui`;const w=g.measureText(text).width+14;g.fillStyle=color;g.beginPath();g.roundRect(x-w/2,y-size*.7,w,size+10,6);g.fill();g.fillStyle='#fff';g.textAlign='center';g.fillText(text,x,y+4);}
@@ -203,54 +263,46 @@ function draw(){scenery();supports();
  for(let i=0;i<40;i++){const a=outline[i],b=outline[i+1];masonryFace([a,b,{x:b.x,y:b.y+34*b.sc},{x:a.x,y:a.y+34*a.sc}],.26);}
  poly(outline,'#c5aa80');paving(outline,440,930,true);line(outline,'#d8c49b',3);
  arenaWalls();
- // These are spots of light cast onto the floor, not discs or icons.
- // The mathematical labels float above the light so they stay legible.
- if(s.mode!=='approach')for(const pad of s.pads){
-  const p=project(pad.x,pad.z),rx=half*.205*p.sc,ry=rx*.53;
-  const warning=!pad.active&&s.arenaClock>=pad.warnAt&&s.arenaClock<pad.readyAt;
-  if(!pad.active&&!warning)continue;
-  const progress=warning?clamp((s.arenaClock-pad.warnAt)/(pad.readyAt-pad.warnAt),0,1):1;
-  const flicker=.82+.18*Math.sin(clock*9+pad.x*3);
-  const power=(warning?.3+progress*.7:1)*flicker;
-  g.save();g.translate(p.x,p.y);
-  // Radial gradients are stretched into ground-plane ovals; no opaque button.
-  g.save();g.scale(1,.53);
-  const halo=g.createRadialGradient(0,0,1,0,0,rx*2.1);
-  halo.addColorStop(0,`rgba(190,250,255,${.68*power})`);
-  halo.addColorStop(.28,`rgba(79,220,255,${.48*power})`);
-  halo.addColorStop(.65,`rgba(13,122,255,${.19*power})`);
-  halo.addColorStop(1,'rgba(13,122,255,0)');
-  g.fillStyle=halo;g.beginPath();g.arc(0,0,rx*2.1,0,Math.PI*2);g.fill();
-  g.restore();
-  // Moving flame-like tongues of blue light run around the edge of the spot.
-  g.shadowColor='#6ae6ff';g.shadowBlur=rx*.5;
-  for(let j=0;j<9;j++){
-   const angle=clock*(warning?1.7:2.5)+j*Math.PI*2/9;
-   const orbit=rx*(.8+.13*Math.sin(clock*6+j));
-   const x=Math.cos(angle)*orbit, y=Math.sin(angle)*ry*.9;
-   const lift=ry*(.18+.32*(.5+.5*Math.sin(clock*7+j*2)))*power;
-   g.strokeStyle=`rgba(113,226,255,${(.35+.45*power).toFixed(3)})`;
-   g.lineWidth=Math.max(1,1.8*p.sc);
-   g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+rx*.08,y-lift*.6,x+rx*.12,y-lift);g.stroke();
+ // The operations are glowing words *on* the stone floor, not floating
+ // labels or physical button discs. Spots fade out, then respawn elsewhere.
+ if(s.mode!=='approach')for(const pad of [...s.padGhosts,...s.pads]){
+  const ghost=pad.expires!==undefined;
+  const warning=!ghost&&!pad.active&&s.arenaClock>=pad.warnAt&&s.arenaClock<pad.readyAt;
+  if(!ghost&&!pad.active&&!warning)continue;
+  const p=project(pad.x,pad.z),rx=half*.225*p.sc,ry=rx*.50;
+  const timeIn=ghost?clamp((pad.expires-s.arenaClock)/.52,0,1):
+   warning?clamp((s.arenaClock-pad.warnAt)/(pad.readyAt-pad.warnAt),0,1):
+   clamp((s.arenaClock-pad.bornAt)/.65,0,1);
+  const power=timeIn*(.87+.13*Math.sin(clock*7+pad.x*3));
+  g.save();g.translate(p.x,p.y);g.scale(1,.48);
+  const glow=g.createRadialGradient(0,0,0,0,0,rx*2.1);
+  glow.addColorStop(0,`rgba(177,250,255,${.52*power})`);
+  glow.addColorStop(.40,`rgba(44,211,255,${.29*power})`);
+  glow.addColorStop(1,'rgba(35,149,255,0)');
+  g.fillStyle=glow;g.beginPath();g.arc(0,0,rx*2.1,0,Math.PI*2);g.fill();
+  g.strokeStyle=`rgba(91,224,255,${.62*power})`;
+  g.lineWidth=Math.max(1,2*p.sc);
+  g.shadowColor='#65e5ff';g.shadowBlur=13*power;
+  g.beginPath();g.ellipse(0,0,rx*(.95+.04*Math.sin(clock*5)),rx*.67,0,0,Math.PI*2);g.stroke();
+  if(!warning){
+   g.textAlign='center';g.textBaseline='middle';
+   g.font=`italic 900 ${Math.max(22,31*p.sc)}px system-ui`;
+   g.lineWidth=3;g.strokeStyle=`rgba(5,97,170,${power})`;
+   g.strokeText(pad.label,0,0);
+   g.fillStyle=`rgba(234,254,255,${power})`;
+   g.shadowBlur=15*power;
+   g.fillText(pad.label,0,0);
   }
-  g.shadowBlur=0;
-  const breathing=1+.06*Math.sin(clock*7+pad.z);
-  g.strokeStyle=`rgba(158,244,255,${.3+.5*power})`;
-  g.lineWidth=Math.max(1.1,1.8*p.sc);
-  g.beginPath();g.ellipse(0,0,rx*breathing,ry*breathing,0,0,Math.PI*2);g.stroke();
   g.restore();
+  // Brief tongues of energy announce a forming spot without an icon.
   if(warning){
-   g.fillStyle='#dbfaff';g.textAlign='center';g.font=`700 ${Math.max(11,15*p.sc)}px system-ui`;
-   g.shadowColor='#3dcfff';g.shadowBlur=8;
-   g.fillText('FORMING',p.x,p.y-ry-11);g.shadowBlur=0;
-  }else{
-   g.save();g.textAlign='center';
-   g.shadowColor='#002c42';g.shadowBlur=6;
-   g.font=`800 ${Math.max(14,21*p.sc)}px system-ui`;
-   g.fillStyle='#ecfdff';g.fillText(pad.label,p.x,p.y-ry-15);
-   g.font=`700 ${Math.max(11,14*p.sc)}px system-ui`;
-   g.fillStyle='#dcf7ff';g.fillText(`→ ${signed(pad.result)}`,p.x,p.y-ry-1);
-   g.restore();
+   g.save();g.globalAlpha=power*.7;g.strokeStyle='#92f1ff';g.lineWidth=1.5*p.sc;
+   for(let i=0;i<6;i++){
+    const a=i*Math.PI/3+clock*2.3,x=Math.cos(a)*rx,y=Math.sin(a)*ry;
+    g.beginPath();g.moveTo(p.x+x,p.y+y);
+    g.lineTo(p.x+x*.92+Math.sin(clock*7+i)*3,p.y+y-8*p.sc);
+    g.stroke();
+   }g.restore();
   }
  }
 
@@ -277,13 +329,23 @@ function draw(){scenery();supports();
  if(s.phase==='warn')label(boss.x,boss.y-h-45,`Turning: ${s.nextSign>0?'+':'−'}`,s.nextSign>0?'#126caa':'#b93451',14);
  if(s.wave){const q=project(0,s.wave.z),swell=.78+.22*Math.sin(clock*10);g.strokeStyle='#dff8ff';g.lineWidth=6;g.beginPath();g.ellipse(q.x,q.y,half*1.32*q.sc,16*q.sc*swell,0,0,7);g.stroke();g.strokeStyle='#7be7ff';g.lineWidth=2.2;g.beginPath();g.ellipse(q.x,q.y,half*1.22*q.sc,10*q.sc*swell,0,0,7);g.stroke();label(q.x,q.y-8,'×(−1)','#794c97',14);}
  if(s.phase==='wave'){g.strokeStyle=s.sign>0?'#7ae7ff':'#ff8eaf';g.lineWidth=4;g.beginPath();g.ellipse(boss.x,boss.y-h*.5,w*.7,h*.55,s.flip*.3,0,Math.PI*1.8);g.stroke();}
- for(const p of s.pulses){const q=project(p.x,p.z),r=13*q.sc;g.drawImage(creatures[p.value<0?-1:1][0],q.x-r,q.y-r*2,r*2,r*2);label(q.x,q.y+12,signed(p.value),p.value>0?'#147bbb':'#c33953',11);}
+ for(const p of [...s.pulses].sort((a,b)=>b.z-a.z)){
+  const q=project(p.x,p.z),count=Math.min(22,Math.abs(p.value));
+  const r=Math.max(4.5,7.4*q.sc),spread=Math.sqrt(count)*r*1.1;
+  const sign=p.value<0?-1:1;
+  for(let i=0;i<count;i++){
+   const a=i*2.399963,d=Math.sqrt((i+.5)/count)*spread;
+   const bx=q.x+Math.cos(a)*d,by=q.y+Math.sin(a)*d*.45;
+   g.drawImage(creatures[sign][i%4],bx-r,by-r*2+Math.sin(clock*8+i)*r*.18,r*2,r*2);
+  }
+  label(q.x,q.y-spread*.55-22*r/8,signed(p.value),sign>0?'#176bb0':'#bb304f',Math.max(11,14*q.sc));
+ }
  const player=project(s.x,s.z),n=Math.min(65,Math.max(0,Math.round(s.visualArmy))),r=Math.min(10,H*.016)*player.sc,spread=Math.min(H*.10,Math.sqrt(n)*r*1.1);
  g.fillStyle='#25332d44';g.beginPath();g.ellipse(player.x+3,player.y+2,spread+5,spread*.5,0,0,7);g.fill();
  for(let i=0;i<n;i++){const a=i*2.4,d=Math.sqrt((i+.5)/n)*spread,x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d*.45;g.drawImage(creatures[s.value<0?-1:1][i%4],x-r,y-r*2+Math.sin(clock*7+i)*r*.15,r*2,r*2);}
  if(s.canceling||s.absorbing){const mid={x:(player.x+boss.x)/2,y:(player.y+boss.y)/2};line([{x:mid.x-W*.06,y:mid.y},{x:mid.x+W*.06,y:mid.y}],'#f1fbff',5);for(let i=0;i<8;i++){g.fillStyle=i%2?'#8de7ff':'#ffa1b6';g.beginPath();g.arc(mid.x+Math.sin(i*9+clock*8)*W*.05,mid.y-i%3*4,2,0,7);g.fill();}}
  label(player.x,player.y+spread*.5+23,signed(s.value),s.value>0?'#147bbb':'#c33953',18);
- $('phase').textContent=s.mode==='approach'?'Approaching arena':s.mode==='exit'?'Boss defeated':paused?'Paused':({warn:'SIGN WAVE INCOMING',wave:'×(−1) WAVE',attack:'FOUR-BLOB ATTACK',open:'BOSS EXPOSED',recover:'RECOVERY'})[s.phase];
+ $('phase').textContent=s.mode==='approach'?'Approaching arena':s.mode==='exit'?'Boss defeated':paused?'Paused':({warn:'SIGN WAVE INCOMING',wave:'×(−1) WAVE',attack:'FOUR EDGE SWARMS',open:'BOSS EXPOSED',recover:'RECOVERY'})[s.phase];
  $('health').textContent=`Dr. Fin · ${s.hp}`;
 }
 function frame(t){const dt=Math.min(.05,last?(t-last)/1000:0);last=t;step(dt);draw();requestAnimationFrame(frame);}function pointer(e){const r=c.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,far=1/(1+1100/510),sc=clamp(far+(py-horizon)*(1-far)/(near-horizon),.4,1.2);s.tx=(px-W/2)/(half*sc)+s.camera;s.tz=s.forward+510*(1/sc-1);}
