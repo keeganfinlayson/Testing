@@ -270,52 +270,59 @@ function draw(){scenery();supports();
   const warning=!ghost&&!pad.active&&s.arenaClock>=pad.warnAt&&s.arenaClock<pad.readyAt;
   if(!ghost&&!pad.active&&!warning)continue;
   const p=project(pad.x,pad.z),rx=half*.225*p.sc,ry=rx*.50;
-  // Color follows the SIGN OF THE OPERATION, not the player's current army.
-  // A minus sign anywhere (e.g. −8 or ×(−1)) produces a red glow.
+  // The sign of the *operation* determines the light color.
   const negative=/[−-]/.test(pad.label);
   const light=negative?{
-   center:'255,237,235',mid:'255,88,113',outer:'255,33,71',
-   edge:'255,134,147',shadow:'#ff476a',ink:'#fff0ed',outline:'#841d38'
+   inner:'255,215,223',mid:'255,71,111',outer:'255,34,70',
+   rim:'255,129,146',shadow:'#ff4969',ink:'#fff7f7',outline:'#52182c'
   }:{
-   center:'232,255,255',mid:'61,222,255',outer:'30,134,255',
-   edge:'143,242,255',shadow:'#55e9ff',ink:'#f5ffff',outline:'#075c9b'
+   inner:'215,251,255',mid:'60,206,249',outer:'27,112,229',
+   rim:'128,225,255',shadow:'#41cfff',ink:'#f9ffff',outline:'#103957'
   };
   const timeIn=ghost?clamp((pad.expires-s.arenaClock)/.52,0,1):
    warning?clamp((s.arenaClock-pad.warnAt)/(pad.readyAt-pad.warnAt),0,1):
    clamp((s.arenaClock-pad.bornAt)/.65,0,1);
-  const power=timeIn*(.94+.06*Math.sin(clock*7+pad.x*3));
-  g.save();g.translate(p.x,p.y);g.scale(1,.48);
-  // Three screen-blended layers read as light emitted by the ground,
-  // rather than a colored disc resting on top of the masonry.
+  const power=timeIn*(.95+.05*Math.sin(clock*6+pad.x*3));
+  // Measure the operation so long values like ×(−1) fit within the light.
+  const fontPx=Math.max(38,54*p.sc);
+  g.save();g.translate(p.x,p.y);g.scale(1,.61);
+  g.font=`italic 900 ${fontPx}px system-ui`;
+  const radiusX=Math.max(rx,g.measureText(pad.label).width*.61);
+  // Keep the light vivid at the edges without whitening the center
+  // enough to hide the letters.
   g.globalCompositeOperation='screen';
-  const glow=g.createRadialGradient(0,0,0,0,0,rx*2.55);
-  glow.addColorStop(0,`rgba(${light.center},${.83*power})`);
-  glow.addColorStop(.27,`rgba(${light.mid},${.56*power})`);
-  glow.addColorStop(.60,`rgba(${light.outer},${.25*power})`);
+  const glow=g.createRadialGradient(0,0,0,0,0,radiusX*2.25);
+  glow.addColorStop(0,`rgba(${light.inner},${.34*power})`);
+  glow.addColorStop(.24,`rgba(${light.mid},${.40*power})`);
+  glow.addColorStop(.57,`rgba(${light.outer},${.20*power})`);
   glow.addColorStop(1,`rgba(${light.outer},0)`);
-  g.fillStyle=glow;g.beginPath();g.arc(0,0,rx*2.55,0,Math.PI*2);g.fill();
-  g.shadowColor=light.shadow;g.shadowBlur=24*power;
-  g.strokeStyle=`rgba(${light.edge},${.87*power})`;
-  g.lineWidth=Math.max(1.5,2.8*p.sc);
-  g.beginPath();g.ellipse(0,0,rx*(.93+.055*Math.sin(clock*5)),rx*.66,0,0,Math.PI*2);g.stroke();
-  g.strokeStyle=`rgba(${light.center},${.38*power})`;
-  g.lineWidth=Math.max(.8,1.25*p.sc);
-  g.beginPath();g.ellipse(0,0,rx*(1.13+.035*Math.sin(clock*4)),rx*.81,0,0,Math.PI*2);g.stroke();
+  g.fillStyle=glow;g.beginPath();g.arc(0,0,radiusX*2.25,0,Math.PI*2);g.fill();
+  g.shadowColor=light.shadow;g.shadowBlur=12*power;
+  g.strokeStyle=`rgba(${light.rim},${.85*power})`;
+  g.lineWidth=Math.max(1.5,2.6*p.sc);
+  g.beginPath();g.ellipse(0,0,radiusX*(.98+.04*Math.sin(clock*5)),rx*.74,0,0,Math.PI*2);g.stroke();
+  g.strokeStyle=`rgba(${light.inner},${.40*power})`;
+  g.lineWidth=Math.max(.8,1.3*p.sc);
+  g.beginPath();g.ellipse(0,0,radiusX*1.15,rx*.87,0,0,Math.PI*2);g.stroke();
   if(!warning){
+   // Switch away from screen blending for the letters themselves:
+   // luminous white lettering needs a crisp, dark boundary on light stone.
+   g.save();g.scale(1,1.16);
+   g.globalCompositeOperation='source-over';
+   g.globalAlpha=power;
    g.textAlign='center';g.textBaseline='middle';
-   g.font=`italic 900 ${Math.max(22,31*p.sc)}px system-ui`;
+   g.font=`italic 900 ${fontPx}px system-ui`;
    g.lineJoin='round';
-   g.shadowColor=light.shadow;
-   g.shadowBlur=29*power;
-   g.lineWidth=5.5;
-   g.strokeStyle=`rgba(${light.mid},${.95*power})`;
-   g.strokeText(pad.label,0,0);
-   g.shadowBlur=16*power;
-   g.lineWidth=2.4;
+   g.shadowBlur=0;
    g.strokeStyle=light.outline;
+   g.lineWidth=7.2;
    g.strokeText(pad.label,0,0);
-   g.fillStyle=`rgba(${light.center},${power})`;
+   g.strokeStyle=negative?'#ef4968':'#208ec5';
+   g.lineWidth=3.2;
+   g.strokeText(pad.label,0,0);
+   g.fillStyle=light.ink;
    g.fillText(pad.label,0,0);
+   g.restore();
   }
   g.restore();
   // Brief tongues of energy announce a forming spot without an icon.
