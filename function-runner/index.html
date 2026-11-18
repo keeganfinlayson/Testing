@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Function Runner — Prototype 0.1</title>
+<style>
+:root{color-scheme:light;--ink:#20344c;--blue:#245681;--paper:#fff9ec;--accent:#7743d2}
+*{box-sizing:border-box}body{margin:0;background:#e4edf3;font-family:Trebuchet MS,system-ui,sans-serif;color:var(--ink)}
+.shell{max-width:1500px;margin:auto;padding:12px}.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+h1{margin:0;color:#173c64;font-size:clamp(23px,3vw,35px);letter-spacing:-1px}.version{font-size:12px;color:#52718b}.controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+button,select,input,textarea{font:inherit;border-radius:10px;border:2px solid #b0c4d4;background:white;color:#20344c}
+button{padding:9px 13px;background:#fffdf6;cursor:pointer;font-weight:700}button:hover{background:#e7f1ff}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #ffbd4d}
+button.main{background:#ffcc52;border-color:#e0a834}button.active{background:#d5c8ff;border-color:#8066cc}
+select{padding:9px;max-width:270px}.formula{display:flex;gap:7px;flex:1 1 340px}.formula input{width:100%;min-width:0;padding:10px 12px;font-size:18px;font-weight:700}
+.scene{position:relative;border:3px solid #436184;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px #3d5b7c33;background:#aadcf7;height:min(67vh,670px);min-height:330px}
+canvas{width:100%;height:100%;display:block}.hud{position:absolute;top:12px;right:12px;background:#fffbedde;padding:7px 12px;border-radius:12px;font-size:14px;box-shadow:0 2px 10px #36556b33;pointer-events:none;max-width:58%}
+.bottom{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-top:10px}
+.info{font-size:14px;color:#426176;flex:1 1 380px}.discrete{display:none;flex:1 1 100%;align-items:flex-start;gap:8px}.discrete.show{display:flex}
+.discrete textarea{resize:vertical;min-height:56px;width:100%;padding:9px}
+.note{margin:7px 0;font-size:12px;color:#54728b}.error{color:#a33436!important}
+@media(max-width:600px){.shell{padding:6px}.scene{height:58vh;min-height:320px}.hud{top:5px;right:5px;font-size:12px}.controls{width:100%}.formula{flex-basis:100%}}
+</style></head>
+<body><div class="shell">
+<div class="bar"><div><h1>Function Runner <span class="version">v0.1 · testing build</span></h1><div class="version">A graph is a landscape. Watch what happens.</div></div>
+<div class="controls"><select id="example" aria-label="Choose an example"><option value="quadratic">Parabola · y = 0.18x² − 3</option><option value="wave">Wavy curve · y = 1.8sin(x/2)</option><option value="up">Uphill · y = 0.7x + 1</option><option value="down">Downhill · y = −0.7x + 1</option><option value="flat">Flat · y = 1</option><option value="absolute">Corner · y = |x| − 2</option><option value="root">Square root · y = √x</option><option value="reciprocal">Reciprocal · y = 1/x</option><option value="vertical">Vertical line · x = 3</option><option value="discrete">Isolated points · jumping</option><option value="custom">Custom equation</option></select>
+<button id="play" class="main">Pause</button><button id="reset">Restart</button><button id="grid" class="active">Grid</button></div></div>
+<div class="formula"><input id="formula" aria-label="Enter equation" value="y = 0.18*x^2 - 3" spellcheck="false"><button id="apply" class="main">Run equation</button></div>
+<div class="scene"><canvas id="stage" aria-label="Animated character running along a function graph"></canvas><div id="hud" class="hud">Running on the graph</div></div>
+<div class="bottom"><div class="discrete" id="discrete"><label for="points"><strong>Points</strong><br><small>Enter (x,y) pairs</small></label><textarea id="points" spellcheck="false">(-4,-1), (-2,2), (0,0), (2,3), (4,1), (6,2)</textarea><button id="applyPoints" class="main">Jump!</button></div><div class="info" id="info">He works harder going up, runs faster going down, and slips if it gets too steep.</div></div>
+<p class="note">Middle-school exploration: increasing, decreasing, flat, steep, corners, separate points. Only supported operations are +, −, ×, ÷, powers, parentheses, sin, cos, tan, sqrt, abs, floor and log. Trigonometry uses radians. Character art is an early articulated prototype based on the approved illustrated model.</p>
+</div>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id),canvas=$('stage'),ctx=canvas.getContext('2d'),examples={quadratic:'y = 0.18*x^2 - 3',wave:'y = 1.8*sin(x/2)',up:'y = 0.7*x + 1',down:'y = -0.7*x + 1',flat:'y = 1',absolute:'y = abs(x) - 2',root:'y = sqrt(x)',reciprocal:'y = 1/x',vertical:'x = 3'};
+let W=1000,H=600,DPR=1,mode='function',fn=x=>0.18*x*x-3,points=[],vertical=3,playing=true,grid=true,last=0,time=0,camX=0,camY=0,rx=-7,velocity=1.6,phase=0,fall=0,flight=0,pause=0,idx=0,state='run',lean=0,description='',scale=52;
+const clamp=(a,lo,hi)=>Math.min(hi,Math.max(lo,a)),mix=(a,b,t)=>a+(b-a)*t;
+function parse(expression){
+ const s=expression.replace(/\\u2212/g,'-').replace(/\\u00d7/g,'*').replace(/\\u00f7/g,'/').replace(/\\u03c0/g,'pi').replace(/\\s+/g,'').toLowerCase();
+ const tokens=[];const pat=/\\d*\\.\\d+(?:e[+-]?\\d+)?|\\d+(?:\\.\\d*)?(?:e[+-]?\\d+)?|[a-z]+|[()+*\\/^,-]/gy;let at=0,m;
+ while(at<s.length){pat.lastIndex=at;m=pat.exec(s);if(!m)throw Error('Cannot read equation near '+s.slice(at,at+10));tokens.push(m[0]);at=pat.lastIndex}
+ let pos=0;const peek=()=>tokens[pos],eat=t=>peek()===t?(pos++,true):false,needsPrimary=t=>t!==undefined&&(t==='('||/^[a-z]|^\\d/.test(t));
+ function atom(){
+  if(eat('(')){const v=add();if(!eat(')'))throw Error('Missing )');return v}
+  const t=tokens[pos++];if(!t)throw Error('Incomplete expression');
+  if(/^\\d/.test(t)){let a=Number(t);return ()=>a}
+  if(t==='x')return x=>x;
+  if(t==='pi')return ()=>Math.PI;
+  if(t==='e')return ()=>Math.E;
+  const functions={sin:Math.sin,cos:Math.cos,tan:Math.tan,sqrt:Math.sqrt,abs:Math.abs,floor:Math.floor,ceil:Math.ceil,ln:Math.log,log:Math.log10,exp:Math.exp};
+  if(functions[t]){if(!eat('('))throw Error('Use '+t+'(...)');let v=add();if(!eat(')'))throw Error('Missing )');return x=>functions[t](v(x))}
+  throw Error('Unsupported term: '+t);
+ }
+ function power(){let a=atom();if(eat('^')){let b=unary();let old=a;a=x=>Math.pow(old(x),b(x))}return a}
+ function unary(){if(eat('+'))return unary();if(eat('-')){let a=unary();return x=>-a(x)}return power()}
+ function mult(){let a=unary();while(true){let op;if(eat('*'))op='*';else if(eat('/'))op='/';else if(needsPrimary(peek()))op='*';else break;let b=unary(),old=a;a=op==='*'?(x=>old(x)*b(x)):(x=>old(x)/b(x))}return a}
+ function add(){let a=mult();while(peek()==='+'||peek()==='-'){let op=tokens[pos++],b=mult(),old=a;a=op==='+'?(x=>old(x)+b(x)):(x=>old(x)-b(x))}return a}
+ const result=add();if(pos!==tokens.length)throw Error('Unexpected: '+tokens[pos]);return result;
+}
+function parseEquation(src){
+ const t=src.trim();if(/^x\\s*=/.test(t.toLowerCase())){const raw=t.replace(/^x\\s*=/i,'');let f=parse(raw),v=f(0);if(!Number.isFinite(v))throw Error('Vertical line must have a number');return {mode:'vertical',v}}
+ const rhs=t.replace(/^(?:y|f\\s*\\(\\s*x\\s*\\))\\s*=/i,'');return {mode:'function',fn:parse(rhs)}
+}
+function parsePoints(s){
+ const re=/\\(\\s*([-+]?\\d*\\.?\\d+)\\s*,\\s*([-+]?\\d*\\.?\\d+)\\s*\\)/g;let a=[],m;while((m=re.exec(s)))a.push({x:+m[1],y:+m[2]});
+ if(a.length<2)throw Error('Enter at least two points as (x,y) pairs');
+ const leftover=s.replace(re,'').replace(/[\\s,;]+/g,'');if(leftover)throw Error('Use points in the form (x,y), (x,y)');
+ a.sort((p,q)=>p.x-q.x);if(a.some((p,i)=>i>0&&p.x===a[i-1].x))throw Error('Use just one output for each x-value');
+ return a;
+}
+function resize(){let r=canvas.getBoundingClientRect();DPR=Math.min(2,window.devicePixelRatio||1);W=Math.max(100,r.width);H=Math.max(100,r.height);canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
+window.addEventListener('resize',resize);resize();
+function screenX(x){return W*.38+(x-camX)*scale}function screenY(y){return H*.55-(y-camY)*scale}
+function reset(){time=0;phase=0;fall=-100;flight=0;pause=.4;idx=0;velocity=1.7;lean=0;playing=true;$('play').textContent='Pause';if(mode==='vertical'){camX=vertical;camY=0;state='fall'}else if(mode==='points'){rx=points[0].x;camX=rx;camY=points[0].y;state='land'}else{rx=-7;let y=fn(rx);if(!Number.isFinite(y)){for(let x=-7;x<5;x+=.25){if(Number.isFinite(fn(x))){rx=x;break}}}camX=rx;camY=Number.isFinite(fn(rx))?fn(rx):0;state='run'}}
+function setMode(v){try{if(v==='discrete'){points=parsePoints($('points').value);mode='points'}else{let p=parseEquation($('formula').value);mode=p.mode;if(p.fn)fn=p.fn;if(p.v!==undefined)vertical=p.v}setError('');$('discrete').classList.toggle('show',mode==='points');reset();return true}catch(e){setError(e.message);return false}}
+function setError(s){$('info').textContent=s||'The character follows the shape of the graph. Choose another example to compare.';$('info').classList.toggle('error',!!s)}
+$('example').addEventListener('change',()=>{let v=$('example').value;if(v==='discrete'){setMode('discrete');return}if(v!=='custom'){$('formula').value=examples[v];setMode(v)}});
+$('apply').onclick=()=>{$('example').value='custom';setMode('custom')};
+$('applyPoints').onclick=()=>setMode('discrete');
+$('formula').addEventListener('keydown',e=>{if(e.key==='Enter')$('apply').click()});
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play'};
+$('reset').onclick=()=>reset();
+$('grid').onclick=()=>{grid=!grid;$('grid').classList.toggle('active',grid)};
+function slopeAt(x){let h=.015,yl=fn(x-h),yr=fn(x+h);if(!Number.isFinite(yl)||!Number.isFinite(yr))return 0;return clamp((yr-yl)/(2*h),-20,20)}
+function tick(dt){
+ if(!playing)return;time+=dt;
+ if(mode==='vertical'){fall+=150*dt+85*dt*dt;state='fall';if(fall>H+180)fall=-140;return}
+ if(mode==='points'){
+  if(pause>0){pause-=dt;state='land'}else{
+   flight+=dt/Math.max(.5,.58+Math.abs(points[idx+1].x-points[idx].x)*.13);
+   state='jump';if(flight>=1){idx++;flight=0;pause=.23;state='land';if(idx>=points.length-1){idx=0;pause=.8;}}
+  }
+  let a=points[idx],b=points[Math.min(idx+1,points.length-1)],u=clamp(flight,0,1),x=mix(a.x,b.x,u),y=mix(a.y,b.y,u)+Math.sin(Math.PI*u)*Math.min(3.1,1.1+Math.abs(b.x-a.x)*.3);
+  rx=x;camX=mix(camX,x,clamp(dt*2,0,1));camY=mix(camY,y,clamp(dt*1.5,0,1));phase+=dt*7;return
+ }
+ let sl=slopeAt(rx),down=Math.max(0,-sl),up=Math.max(0,sl);
+ let target=clamp(1.55*(1+Math.min(2,down)*.58)/(1+Math.min(7,up)*.7),.18,3.6);
+ velocity=mix(velocity,target,clamp(dt*2.8,0,1));
+ let next=rx+velocity*dt;
+ let y=fn(rx),ny=fn(next),mid=fn((rx+next)*.5);
+ if(!Number.isFinite(ny)||!Number.isFinite(mid)||Math.abs(ny-y)>3){
+   // Never bridge an asymptote or domain break.
+   rx=-7;for(let x=-7;x<7;x+=.2){if(Number.isFinite(fn(x))){rx=x;break}}velocity=1.4;state='run';
+ }else{rx=next;state=sl<-1.35?'slide':up>1.2?'struggle':'run'}
+ phase+=dt*(state==='slide'?3.2:velocity*7.4+3);
+ if(rx>camX+W/scale*.82){rx=-7}
+ let yy=fn(rx);if(!Number.isFinite(yy))yy=0;
+ camX=mix(camX,rx,clamp(dt*1.6,0,1));camY=mix(camY,yy,clamp(dt*1.35,0,1));
+ lean=mix(lean,clamp(-sl*.17,-.23,.24),clamp(dt*3,0,1));
+}
+function background(){
+ const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#83cfff');sky.addColorStop(.6,'#e0f1ff');sky.addColorStop(1,'#f9e6b1');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='#fff4c9';ctx.beginPath();ctx.arc(W*.82,H*.22,35,0,Math.PI*2);ctx.fill();
+ for(let i=0;i<7;i++){let cx=(i*.23+.09)*W+Math.sin(i*9)*15,cy=H*(.13+i%3*.11);ctx.fillStyle='rgba(255,255,255,.54)';for(let j=0;j<3;j++){ctx.beginPath();ctx.ellipse(cx+j*23,cy+(j%2)*7,38,15,0,0,Math.PI*2);ctx.fill()}}
+ const layers=[{c:'#c3d8e1',by:.78,amp:48},{c:'#9ec5ca',by:.86,amp:33},{c:'#80b7a9',by:.99,amp:22}];
+ layers.forEach((l,k)=>{ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W+10;x+=8){let y=H*l.by+Math.sin(x*.007+k*2)*l.amp+Math.sin(x*.021+k)*l.amp*.22;ctx.lineTo(x,y)}ctx.lineTo(W,H);ctx.closePath();ctx.fillStyle=l.c;ctx.fill()});
+}
+function drawGrid(){
+ if(!grid)return;const step=scale,minX=camX-.38*W/scale,maxX=camX+.62*W/scale,minY=camY-.45*H/scale,maxY=camY+.55*H/scale;
+ ctx.lineWidth=1;for(let x=Math.ceil(minX);x<=maxX;x++){let sx=screenX(x);ctx.strokeStyle=x===0?'#42627a8c':'#ffffff90';ctx.lineWidth=x===0?2:1;ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx,H);ctx.stroke();if(x%2===0){ctx.fillStyle='#35576b';ctx.font='12px Trebuchet MS';ctx.fillText(String(x),sx+3,H-9)}}
+ for(let y=Math.ceil(minY);y<=maxY;y++){let sy=screenY(y);ctx.strokeStyle=y===0?'#42627a8c':'#ffffff90';ctx.lineWidth=y===0?2:1;ctx.beginPath();ctx.moveTo(0,sy);ctx.lineTo(W,sy);ctx.stroke();if(y%2===0){ctx.fillStyle='#35576b';ctx.font='12px Trebuchet MS';ctx.fillText(String(y),5,sy-3)}}
+}
+function pathGraph(){
+ ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+ if(mode==='vertical'){let sx=W*.49;ctx.strokeStyle='#ffffffc9';ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(sx,-20);ctx.lineTo(sx,H+20);ctx.stroke();ctx.strokeStyle='#7142cc';ctx.lineWidth=5;ctx.stroke();ctx.restore();return}
+ if(mode==='points'){points.forEach(p=>{let x=screenX(p.x),y=screenY(p.y);ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(x,y,10,0,7);ctx.fill();ctx.fillStyle='#7842d0';ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fill()});ctx.restore();return}
+ for(let pass=0;pass<2;pass++){ctx.beginPath();let old=null,connected=false;for(let px=-3;px<W+3;px+=2){let x=camX+(px-W*.38)/scale,y=fn(x),sy=screenY(y);const ok=Number.isFinite(y)&&Math.abs(sy)<1e5&&(!old||Math.abs(sy-old.sy)<50);if(ok){if(!connected)ctx.moveTo(px,sy);else ctx.lineTo(px,sy);connected=true}else connected=false;old=Number.isFinite(y)?{sy}:null}
+ ctx.strokeStyle=pass===0?'#ffffffd8':'#7342cb';ctx.lineWidth=pass===0?9:4;ctx.stroke()}ctx.restore();
+}
+function limb(a,b,w,color){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+function ellipse(x,y,rx,ry,c,angle=0){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+function drawRunner(px,groundY,anim){
+ const jumping=anim==='jump',falling=anim==='fall',sliding=anim==='slide';
+ let step=Math.sin(phase),step2=Math.cos(phase),effort=anim==='struggle';
+ let airborne=jumping||falling;ctx.save();ctx.translate(px,groundY);
+ const scaleChar=clamp(W/950,.67,1.18);ctx.scale(scaleChar,scaleChar);
+ // All poses are composed around the same upright torso and head proportions.
+ let tilt=falling?-.22:sliding?.58:effort?-.15:clamp(lean,-.16,.2);
+ let bounce=airborne?0:sliding?0:Math.abs(step)*2.5;ctx.translate(0,-bounce);
+ let hip=[0,-32],shoulder=[-tilt*12,-70],neck=[shoulder[0],-77],head=[neck[0]+1,-91];
+ if(sliding){hip=[-8,-23];shoulder=[-23,-50];head=[-29,-73]}
+ if(falling){hip=[0,-33];shoulder=[-2,-67];head=[-4,-84]}
+ const knee1=falling?[-12,-17]:jumping?[-10,-12]:sliding?[3,-11]:[10+step*10,-16-Math.max(0,step)*5],
+ knee2=falling?[16,-11]:jumping?[22,-18]:sliding?[28,-8]:[-10-step*10,-16+Math.min(0,step)*5];
+ const foot1=falling?[-16,5]:jumping?[7,-1]:sliding?[24,-3]:[19+step*23,0-Math.max(0,step)*7],
+ foot2=falling?[21,7]:jumping?[31,-3]:sliding?[46,0]:[-17-step*23,0+Math.min(0,step)*7];
+ limb(hip,knee2,15,'#d5b18a');limb(knee2,foot2,12,'#d5b18a');ellipse(foot2[0]+6,foot2[1],12,5,'#4b5664',-.1);
+ limb(hip,knee1,15,'#e0bf96');limb(knee1,foot1,12,'#e0bf96');ellipse(foot1[0]+6,foot1[1],12,5,'#394a60',-.1);
+ // khaki shorts with generous adult proportions
+ limb([hip[0]-1,hip[1]-4],[hip[0],hip[1]+9],24,'#c5aa79');ellipse(hip[0],hip[1],16,12,'#c8b081');
+ let armBack=falling?[18,-100]:sliding?[-49,-33]:[shoulder[0]-12-step2*12,-54-step*11];
+ limb([shoulder[0]-6,shoulder[1]+3],armBack,12,'#c78f64');ellipse(armBack[0],armBack[1],6,6,'#d7aa83');
+ limb(hip,shoulder,29,'#263f60');ellipse(shoulder[0],shoulder[1]+7,17,17,'#284766');ellipse(hip[0],-44,18,16,'#294361');
+ let armFront=falling?[-23,-111]:sliding?[-46,-35]:[shoulder[0]+14+step2*14,-59+step*10];
+ limb([shoulder[0]+9,shoulder[1]+3],armFront,12,'#dea97e');ellipse(armFront[0],armFront[1],7,6,'#d9a17a');
+ // neck + face: receding brown hair, salt-and-pepper full beard, wide nose, expressive eyebrow
+ ellipse(head[0]+1,head[1]+1,17,19,'#c8926d');ellipse(head[0]+7,head[1]+8,16,14,'#574b45');
+ ellipse(head[0]+13,head[1]+8,9,9,'#76675e');ellipse(head[0]-7,head[1]+1,4,7,'#d9a07e');
+ ellipse(head[0]+4,head[1]-15,12,5,'#524034',-.18);ellipse(head[0]-6,head[1]-12,8,4,'#493a32');
+ ellipse(head[0]+14,head[1]+1,6,5,'#ca926a');ellipse(head[0]+10,head[1]+7,9,4,'#3d302d');
+ ellipse(head[0]+16,head[1]+9,5,2,'#b7a69a');
+ ellipse(head[0]+11,head[1]-6,3.5,4,'#ffffff');ellipse(head[0]+12.8,head[1]-5,1.8,2.5,'#26323b');
+ ctx.strokeStyle='#594535';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(head[0]+7,head[1]-13);ctx.lineTo(head[0]+16,head[1]-12);ctx.stroke();
+ if(falling||sliding){ctx.strokeStyle='#49372b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(head[0]+17,head[1]+5,4,0,Math.PI);ctx.stroke()}
+ ctx.restore();
+}
+function render(){
+ ctx.clearRect(0,0,W,H);background();drawGrid();pathGraph();
+ let px,py,beh;
+ if(mode==='vertical'){px=W*.49+30;py=fall;beh='fall';$('hud').textContent='x = '+vertical+' · Falling right past the line!'}
+ else if(mode==='points'){let a=points[idx],b=points[Math.min(idx+1,points.length-1)],u=clamp(flight,0,1);px=screenX(rx);let y=mix(a.y,b.y,u)+Math.sin(Math.PI*u)*Math.min(3.1,1.1+Math.abs(b.x-a.x)*.3);py=screenY(y);beh=state;$('hud').textContent='Separate points · Jumping, not running'}
+ else{let y=fn(rx);px=screenX(rx);py=screenY(y);beh=state;let s=slopeAt(rx);$('hud').textContent=s>1.1?'Very steep! Working hard uphill':s>.12?'Going uphill':s< -1.35?'Too steep! Sliding!':s<-.12?'Picking up speed downhill':'Running comfortably'}
+ if(Number.isFinite(px)&&Number.isFinite(py)&&py>-150&&py<H+180)drawRunner(px,py,beh);
+}
+function frame(t){let dt=clamp((t-last)/1000,0,.05);last=t;if(playing){for(let i=0;i<2;i++)tick(dt/2)}render();requestAnimationFrame(frame)}
+setMode('quadratic');requestAnimationFrame(frame);
+})();
+</script></body></html>
