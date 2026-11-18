@@ -21,7 +21,7 @@ canvas{width:100%;height:100%;display:block}.hud{position:absolute;top:12px;righ
 @media(max-width:600px){.shell{padding:6px}.scene{height:58vh;min-height:320px}.hud{top:5px;right:5px;font-size:12px}.controls{width:100%}.formula{flex-basis:100%}}
 </style></head>
 <body><div class="shell">
-<div class="bar"><div><h1>Function Runner <span class="version">v0.1 · testing build</span></h1><div class="version">A graph is a landscape. Watch what happens.</div></div>
+<div class="bar"><div><h1>Function Runner <span class="version">v0.2 · testing build</span></h1><div class="version">A graph is a landscape. Watch what happens.</div></div>
 <div class="controls"><select id="example" aria-label="Choose an example"><option value="quadratic">Parabola · y = 0.18x² − 3</option><option value="wave">Wavy curve · y = 1.8sin(x/2)</option><option value="up">Uphill · y = 0.7x + 1</option><option value="down">Downhill · y = −0.7x + 1</option><option value="flat">Flat · y = 1</option><option value="absolute">Corner · y = |x| − 2</option><option value="root">Square root · y = √x</option><option value="reciprocal">Reciprocal · y = 1/x</option><option value="vertical">Vertical line · x = 3</option><option value="discrete">Isolated points · jumping</option><option value="custom">Custom equation</option></select>
 <button id="play" class="main">Pause</button><button id="reset">Restart</button><button id="grid" class="active">Grid</button></div></div>
 <div class="formula"><input id="formula" aria-label="Enter equation" value="y = 0.18*x^2 - 3" spellcheck="false"><button id="apply" class="main">Run equation</button></div>
@@ -129,41 +129,83 @@ function pathGraph(){
 }
 function limb(a,b,w,color){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
 function ellipse(x,y,rx,ry,c,angle=0){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+
+function inkPath(points,color='#493c38',width=1.4){
+ ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';
+ ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();
+}
 function drawRunner(px,groundY,anim){
- const jumping=anim==='jump',falling=anim==='fall',sliding=anim==='slide';
- let step=Math.sin(phase),step2=Math.cos(phase),effort=anim==='struggle';
- let airborne=jumping||falling;ctx.save();ctx.translate(px,groundY);
- const scaleChar=clamp(W/950,.67,1.18);ctx.scale(scaleChar,scaleChar);
- // All poses are composed around the same upright torso and head proportions.
- let tilt=falling?-.22:sliding?.58:effort?-.15:clamp(lean,-.16,.2);
- let bounce=airborne?0:sliding?0:Math.abs(step)*2.5;ctx.translate(0,-bounce);
- let hip=[0,-32],shoulder=[-tilt*12,-70],neck=[shoulder[0],-77],head=[neck[0]+1,-91];
- if(sliding){hip=[-8,-23];shoulder=[-23,-50];head=[-29,-73]}
- if(falling){hip=[0,-33];shoulder=[-2,-67];head=[-4,-84]}
- const knee1=falling?[-12,-17]:jumping?[-10,-12]:sliding?[3,-11]:[10+step*10,-16-Math.max(0,step)*5],
- knee2=falling?[16,-11]:jumping?[22,-18]:sliding?[28,-8]:[-10-step*10,-16+Math.min(0,step)*5];
- const foot1=falling?[-16,5]:jumping?[7,-1]:sliding?[24,-3]:[19+step*23,0-Math.max(0,step)*7],
- foot2=falling?[21,7]:jumping?[31,-3]:sliding?[46,0]:[-17-step*23,0+Math.min(0,step)*7];
- limb(hip,knee2,15,'#d5b18a');limb(knee2,foot2,12,'#d5b18a');ellipse(foot2[0]+6,foot2[1],12,5,'#4b5664',-.1);
- limb(hip,knee1,15,'#e0bf96');limb(knee1,foot1,12,'#e0bf96');ellipse(foot1[0]+6,foot1[1],12,5,'#394a60',-.1);
- // khaki shorts with generous adult proportions
- limb([hip[0]-1,hip[1]-4],[hip[0],hip[1]+9],24,'#c5aa79');ellipse(hip[0],hip[1],16,12,'#c8b081');
- let armBack=falling?[18,-100]:sliding?[-49,-33]:[shoulder[0]-12-step2*12,-54-step*11];
- limb([shoulder[0]-6,shoulder[1]+3],armBack,12,'#c78f64');ellipse(armBack[0],armBack[1],6,6,'#d7aa83');
- limb(hip,shoulder,29,'#263f60');ellipse(shoulder[0],shoulder[1]+7,17,17,'#284766');ellipse(hip[0],-44,18,16,'#294361');
- let armFront=falling?[-23,-111]:sliding?[-46,-35]:[shoulder[0]+14+step2*14,-59+step*10];
- limb([shoulder[0]+9,shoulder[1]+3],armFront,12,'#dea97e');ellipse(armFront[0],armFront[1],7,6,'#d9a17a');
- // neck + face: receding brown hair, salt-and-pepper full beard, wide nose, expressive eyebrow
- ellipse(head[0]+1,head[1]+1,17,19,'#c8926d');ellipse(head[0]+7,head[1]+8,16,14,'#574b45');
- ellipse(head[0]+13,head[1]+8,9,9,'#76675e');ellipse(head[0]-7,head[1]+1,4,7,'#d9a07e');
- ellipse(head[0]+4,head[1]-15,12,5,'#524034',-.18);ellipse(head[0]-6,head[1]-12,8,4,'#493a32');
- ellipse(head[0]+14,head[1]+1,6,5,'#ca926a');ellipse(head[0]+10,head[1]+7,9,4,'#3d302d');
- ellipse(head[0]+16,head[1]+9,5,2,'#b7a69a');
- ellipse(head[0]+11,head[1]-6,3.5,4,'#ffffff');ellipse(head[0]+12.8,head[1]-5,1.8,2.5,'#26323b');
- ctx.strokeStyle='#594535';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(head[0]+7,head[1]-13);ctx.lineTo(head[0]+16,head[1]-12);ctx.stroke();
- if(falling||sliding){ctx.strokeStyle='#49372b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(head[0]+17,head[1]+5,4,0,Math.PI);ctx.stroke()}
+ const jumping=anim==='jump',falling=anim==='fall',sliding=anim==='slide',effort=anim==='struggle';
+ const step=Math.sin(phase),cycle=Math.cos(phase),airborne=jumping||falling;
+ ctx.save();ctx.translate(px,groundY);const k=clamp(W/950,.72,1.27);ctx.scale(k,k);
+ const hip=[-2,-38],shoulder=[0,-86],head=[6,-114];
+ // Keep the character's upper back upright: body motion comes from the legs and arms.
+ if(sliding){hip[0]=-12;hip[1]=-26;shoulder[0]=-30;shoulder[1]=-58;head[0]=-31;head[1]=-84}
+ if(falling){hip[1]=-43;shoulder[1]=-88;head[1]=-117}
+ const bob=airborne?0:Math.abs(step)*2;ctx.translate(0,-bob);
+ const stride=sliding?0:step;
+ const backKnee=falling?[-20,-20]:jumping?[4,-14]:sliding?[8,-12]:[-12-stride*14,-17+Math.max(0,stride)*4];
+ const frontKnee=falling?[18,-19]:jumping?[23,-23]:sliding?[24,-12]:[13+stride*14,-19-Math.max(0,stride)*4];
+ const backFoot=falling?[-27,6]:jumping?[-2,-4]:sliding?[30,1]:[-21-stride*24,-1+Math.max(0,stride)*5];
+ const frontFoot=falling?[29,7]:jumping?[32,-4]:sliding?[51,1]:[19+stride*25,-1-Math.max(0,stride)*5];
+ function shoe(p){ellipse(p[0]+6,p[1],13,6,'#555b67',-.08);ellipse(p[0]+7,p[1]-2,10,3.4,'#8b929b',-.08);inkPath([[p[0]-5,p[1]+3],[p[0]+17,p[1]+3]],'#313943',1.4);for(let i=0;i<3;i++)inkPath([[p[0]+i*3,p[1]-5],[p[0]+i*3+4,p[1]-3]],'#e6e4dc',.9)}
+ // Back leg, sock and sneaker
+ limb(hip,backKnee,16,'#d2a06d');limb(backKnee,backFoot,13,'#dfb17e');
+ inkPath([[backKnee[0]-5,backKnee[1]],[backKnee[0]+4,backKnee[1]+1]],'#986947',1);
+ limb([backFoot[0]-2,backFoot[1]-7],[backFoot[0],backFoot[1]-1],10,'#f3eee1');shoe(backFoot);
+ // Broad cargo shorts, not a backpack
+ ellipse(hip[0],hip[1]+4,20,15,'#d5b07c');ellipse(hip[0]-8,hip[1]+10,11,10,'#caa16c');
+ inkPath([[-17,-34],[-16,-23],[-5,-22]],'#927147',1.6);
+ ctx.fillStyle='#d5b381';ctx.fillRect(-23,-27,11,10);inkPath([[-22,-26],[-13,-26],[-13,-20],[-22,-20]],'#987a54',1);
+ // Front leg
+ limb(hip,frontKnee,17,'#e4b483');limb(frontKnee,frontFoot,13,'#e8b98b');
+ limb([frontFoot[0]-1,frontFoot[1]-8],[frontFoot[0],frontFoot[1]-1],10,'#f7f3e9');shoe(frontFoot);
+ // Back arm, bent and pumping
+ const rearElbow=falling?[18,-109]:sliding?[-50,-45]:[-21-cycle*10,-67+stride*9];
+ const rearHand=falling?[27,-132]:sliding?[-55,-30]:[-10-cycle*18,-61+stride*10];
+ limb([shoulder[0]-9,shoulder[1]+3],rearElbow,13,'#d6a074');limb(rearElbow,rearHand,11,'#d8a77c');ellipse(rearHand[0],rearHand[1],6.5,6,'#d9a67b');
+ // Navy shirt, upright with realistic torso width
+ ctx.fillStyle='#344967';ctx.strokeStyle='#263a57';ctx.lineWidth=1.5;ctx.beginPath();
+ ctx.moveTo(shoulder[0]-16,shoulder[1]-7);ctx.quadraticCurveTo(shoulder[0]+2,shoulder[1]-15,shoulder[0]+17,shoulder[1]-3);
+ ctx.lineTo(hip[0]+19,hip[1]+2);ctx.quadraticCurveTo(hip[0]+1,hip[1]+9,hip[0]-19,hip[1]+2);
+ ctx.closePath();ctx.fill();ctx.stroke();
+ inkPath([[shoulder[0]-9,-73],[hip[0]-10,-41]],'#71839c',.8);
+ inkPath([[hip[0]-17,hip[1]+3],[hip[0]+17,hip[1]+3]],'#1f344f',2);
+ // Front arm and clenched hand
+ const elbow=falling?[-22,-121]:sliding?[-46,-49]:[shoulder[0]+16+cycle*11,-66-stride*8];
+ const hand=falling?[-27,-149]:sliding?[-39,-39]:[elbow[0]+13,-75-stride*10];
+ limb([shoulder[0]+12,shoulder[1]+2],elbow,14,'#e1aa79');limb(elbow,hand,11,'#e8b787');ellipse(hand[0],hand[1],7,6,'#e1ad7f');
+ inkPath([[hand[0]+3,hand[1]-3],[hand[0]+6,hand[1]]],'#9d6e4d',.9);
+ // Neck and face in watercolor-inspired layered colors
+ ellipse(head[0],head[1]+14,8,11,'#ce9870');
+ ellipse(head[0]-1,head[1],19,24,'#e4ae81',-.06);
+ ellipse(head[0]+2,head[1]+1,16,21,'#e9b98d',-.05);
+ // Salt-and-pepper full beard: irregular silhouette, gray chin and darker moustache
+ ctx.fillStyle='#625951';ctx.strokeStyle='#3c3937';ctx.lineWidth=1.2;ctx.beginPath();
+ ctx.moveTo(head[0]-12,head[1]+3);ctx.quadraticCurveTo(head[0]-19,head[1]+21,head[0]-6,head[1]+28);
+ ctx.quadraticCurveTo(head[0]+9,head[1]+35,head[0]+20,head[1]+19);
+ ctx.quadraticCurveTo(head[0]+23,head[1]+12,head[0]+13,head[1]+9);
+ ctx.quadraticCurveTo(head[0]+4,head[1]+17,head[0]-12,head[1]+3);ctx.fill();ctx.stroke();
+ ellipse(head[0]+7,head[1]+24,12,6,'#a09a8f',.15);
+ ellipse(head[0]+14,head[1]+17,8,4,'#89857d',.3);
+ // Receding hairline, textured wisps
+ ctx.fillStyle='#4b3a32';ctx.beginPath();ctx.ellipse(head[0]-6,head[1]-19,14,6,-.22,Math.PI,Math.PI*2);ctx.fill();
+ for(let i=0;i<9;i++){let xx=head[0]-18+i*3;inkPath([[xx,head[1]-18-(i%3)*2],[xx+3,head[1]-22-(i%4)*2]],i%3?'#59483b':'#756253',1.25)}
+ ellipse(head[0]-17,head[1]+1,5,8,'#d89c75');ellipse(head[0]-17,head[1]+1,2.2,4,'#a66e54');
+ // Distinctive broad nose in profile and lively brown eye
+ ellipse(head[0]+17,head[1]+1,8,5.5,'#e4aa7c',-.1);
+ ellipse(head[0]+11,head[1]-7,4,3,'#fff6e9');ellipse(head[0]+12.5,head[1]-6.5,2,2.2,'#3d332e');
+ inkPath([[head[0]+6,head[1]-13],[head[0]+15,head[1]-12]],'#5b4539',2);
+ inkPath([[head[0]+8,head[1]-1],[head[0]+11,head[1]+1]],'#b37b58',.9);
+ // Smile / strain / surprise, anchored inside beard
+ if(falling){ellipse(head[0]+17,head[1]+12,5.5,8,'#442f2b');ellipse(head[0]+17,head[1]+15,2,2,'#b86f69')}
+ else if(effort||sliding){inkPath([[head[0]+12,head[1]+11],[head[0]+21,head[1]+12]],'#382e2c',2);inkPath([[head[0]+13,head[1]+13],[head[0]+20,head[1]+14]],'#f8eee1',1.6)}
+ else{ellipse(head[0]+16,head[1]+12,8,4,'#3e3030',-.2);ellipse(head[0]+16,head[1]+10.7,6,1.8,'#f7f0e5',-.2)}
+ // Beard strands and ink hatching
+ for(let i=0;i<10;i++){let a=i*.62;let bx=head[0]-9+i*3.0,by=head[1]+19+Math.sin(a)*5;inkPath([[bx,by],[bx+1,by+3]],i%2?'#b5aaa0':'#423e3b',.65)}
  ctx.restore();
 }
+
 function render(){
  ctx.clearRect(0,0,W,H);background();drawGrid();pathGraph();
  let px,py,beh;
