@@ -270,33 +270,57 @@ function draw(){scenery();supports();
   const warning=!ghost&&!pad.active&&s.arenaClock>=pad.warnAt&&s.arenaClock<pad.readyAt;
   if(!ghost&&!pad.active&&!warning)continue;
   const p=project(pad.x,pad.z),rx=half*.225*p.sc,ry=rx*.50;
+  // Color follows the SIGN OF THE OPERATION, not the player's current army.
+  // A minus sign anywhere (e.g. −8 or ×(−1)) produces a red glow.
+  const negative=/[−-]/.test(pad.label);
+  const light=negative?{
+   center:'255,237,235',mid:'255,88,113',outer:'255,33,71',
+   edge:'255,134,147',shadow:'#ff476a',ink:'#fff0ed',outline:'#841d38'
+  }:{
+   center:'232,255,255',mid:'61,222,255',outer:'30,134,255',
+   edge:'143,242,255',shadow:'#55e9ff',ink:'#f5ffff',outline:'#075c9b'
+  };
   const timeIn=ghost?clamp((pad.expires-s.arenaClock)/.52,0,1):
    warning?clamp((s.arenaClock-pad.warnAt)/(pad.readyAt-pad.warnAt),0,1):
    clamp((s.arenaClock-pad.bornAt)/.65,0,1);
-  const power=timeIn*(.87+.13*Math.sin(clock*7+pad.x*3));
+  const power=timeIn*(.94+.06*Math.sin(clock*7+pad.x*3));
   g.save();g.translate(p.x,p.y);g.scale(1,.48);
-  const glow=g.createRadialGradient(0,0,0,0,0,rx*2.1);
-  glow.addColorStop(0,`rgba(177,250,255,${.52*power})`);
-  glow.addColorStop(.40,`rgba(44,211,255,${.29*power})`);
-  glow.addColorStop(1,'rgba(35,149,255,0)');
-  g.fillStyle=glow;g.beginPath();g.arc(0,0,rx*2.1,0,Math.PI*2);g.fill();
-  g.strokeStyle=`rgba(91,224,255,${.62*power})`;
-  g.lineWidth=Math.max(1,2*p.sc);
-  g.shadowColor='#65e5ff';g.shadowBlur=13*power;
-  g.beginPath();g.ellipse(0,0,rx*(.95+.04*Math.sin(clock*5)),rx*.67,0,0,Math.PI*2);g.stroke();
+  // Three screen-blended layers read as light emitted by the ground,
+  // rather than a colored disc resting on top of the masonry.
+  g.globalCompositeOperation='screen';
+  const glow=g.createRadialGradient(0,0,0,0,0,rx*2.55);
+  glow.addColorStop(0,`rgba(${light.center},${.83*power})`);
+  glow.addColorStop(.27,`rgba(${light.mid},${.56*power})`);
+  glow.addColorStop(.60,`rgba(${light.outer},${.25*power})`);
+  glow.addColorStop(1,`rgba(${light.outer},0)`);
+  g.fillStyle=glow;g.beginPath();g.arc(0,0,rx*2.55,0,Math.PI*2);g.fill();
+  g.shadowColor=light.shadow;g.shadowBlur=24*power;
+  g.strokeStyle=`rgba(${light.edge},${.87*power})`;
+  g.lineWidth=Math.max(1.5,2.8*p.sc);
+  g.beginPath();g.ellipse(0,0,rx*(.93+.055*Math.sin(clock*5)),rx*.66,0,0,Math.PI*2);g.stroke();
+  g.strokeStyle=`rgba(${light.center},${.38*power})`;
+  g.lineWidth=Math.max(.8,1.25*p.sc);
+  g.beginPath();g.ellipse(0,0,rx*(1.13+.035*Math.sin(clock*4)),rx*.81,0,0,Math.PI*2);g.stroke();
   if(!warning){
    g.textAlign='center';g.textBaseline='middle';
    g.font=`italic 900 ${Math.max(22,31*p.sc)}px system-ui`;
-   g.lineWidth=3;g.strokeStyle=`rgba(5,97,170,${power})`;
+   g.lineJoin='round';
+   g.shadowColor=light.shadow;
+   g.shadowBlur=29*power;
+   g.lineWidth=5.5;
+   g.strokeStyle=`rgba(${light.mid},${.95*power})`;
    g.strokeText(pad.label,0,0);
-   g.fillStyle=`rgba(234,254,255,${power})`;
-   g.shadowBlur=15*power;
+   g.shadowBlur=16*power;
+   g.lineWidth=2.4;
+   g.strokeStyle=light.outline;
+   g.strokeText(pad.label,0,0);
+   g.fillStyle=`rgba(${light.center},${power})`;
    g.fillText(pad.label,0,0);
   }
   g.restore();
   // Brief tongues of energy announce a forming spot without an icon.
   if(warning){
-   g.save();g.globalAlpha=power*.7;g.strokeStyle='#92f1ff';g.lineWidth=1.5*p.sc;
+   g.save();g.globalAlpha=power*.95;g.strokeStyle=negative?'#ff9aa8':'#b2f5ff';g.shadowColor=light.shadow;g.shadowBlur=14*power;g.lineWidth=1.8*p.sc;
    for(let i=0;i<6;i++){
     const a=i*Math.PI/3+clock*2.3,x=Math.cos(a)*rx,y=Math.sin(a)*ry;
     g.beginPath();g.moveTo(p.x+x,p.y+y);
