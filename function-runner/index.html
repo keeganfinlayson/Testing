@@ -36,14 +36,14 @@ const $=id=>document.getElementById(id),canvas=$('stage'),ctx=canvas.getContext(
 let W=1000,H=600,DPR=1,mode='function',fn=x=>0.18*x*x-3,points=[],vertical=3,playing=true,grid=true,last=0,time=0,camX=0,camY=0,rx=-7,velocity=1.6,phase=0,fall=0,flight=0,pause=0,idx=0,state='run',lean=0,description='',scale=52;
 const clamp=(a,lo,hi)=>Math.min(hi,Math.max(lo,a)),mix=(a,b,t)=>a+(b-a)*t;
 function parse(expression){
- const s=expression.replace(/\\u2212/g,'-').replace(/\\u00d7/g,'*').replace(/\\u00f7/g,'/').replace(/\\u03c0/g,'pi').replace(/\\s+/g,'').toLowerCase();
- const tokens=[];const pat=/\\d*\\.\\d+(?:e[+-]?\\d+)?|\\d+(?:\\.\\d*)?(?:e[+-]?\\d+)?|[a-z]+|[()+*\\/^,-]/gy;let at=0,m;
+ const s=expression.replace(/\u2212/g,'-').replace(/\u00d7/g,'*').replace(/\u00f7/g,'/').replace(/\u03c0/g,'pi').replace(/\s+/g,'').toLowerCase();
+ const tokens=[];const pat=/\d*\.\d+(?:e[+-]?\d+)?|\d+(?:\.\d*)?(?:e[+-]?\d+)?|[a-z]+|[()+*\/^,-]/gy;let at=0,m;
  while(at<s.length){pat.lastIndex=at;m=pat.exec(s);if(!m)throw Error('Cannot read equation near '+s.slice(at,at+10));tokens.push(m[0]);at=pat.lastIndex}
- let pos=0;const peek=()=>tokens[pos],eat=t=>peek()===t?(pos++,true):false,needsPrimary=t=>t!==undefined&&(t==='('||/^[a-z]|^\\d/.test(t));
+ let pos=0;const peek=()=>tokens[pos],eat=t=>peek()===t?(pos++,true):false,needsPrimary=t=>t!==undefined&&(t==='('||/^[a-z]|^\d/.test(t));
  function atom(){
   if(eat('(')){const v=add();if(!eat(')'))throw Error('Missing )');return v}
   const t=tokens[pos++];if(!t)throw Error('Incomplete expression');
-  if(/^\\d/.test(t)){let a=Number(t);return ()=>a}
+  if(/^\d/.test(t)){let a=Number(t);return ()=>a}
   if(t==='x')return x=>x;
   if(t==='pi')return ()=>Math.PI;
   if(t==='e')return ()=>Math.E;
@@ -58,13 +58,13 @@ function parse(expression){
  const result=add();if(pos!==tokens.length)throw Error('Unexpected: '+tokens[pos]);return result;
 }
 function parseEquation(src){
- const t=src.trim();if(/^x\\s*=/.test(t.toLowerCase())){const raw=t.replace(/^x\\s*=/i,'');let f=parse(raw),v=f(0);if(!Number.isFinite(v))throw Error('Vertical line must have a number');return {mode:'vertical',v}}
- const rhs=t.replace(/^(?:y|f\\s*\\(\\s*x\\s*\\))\\s*=/i,'');return {mode:'function',fn:parse(rhs)}
+ const t=src.trim();if(/^x\s*=/.test(t.toLowerCase())){const raw=t.replace(/^x\s*=/i,'');let f=parse(raw),v=f(0);if(!Number.isFinite(v))throw Error('Vertical line must have a number');return {mode:'vertical',v}}
+ const rhs=t.replace(/^(?:y|f\s*\(\s*x\s*\))\s*=/i,'');return {mode:'function',fn:parse(rhs)}
 }
 function parsePoints(s){
- const re=/\\(\\s*([-+]?\\d*\\.?\\d+)\\s*,\\s*([-+]?\\d*\\.?\\d+)\\s*\\)/g;let a=[],m;while((m=re.exec(s)))a.push({x:+m[1],y:+m[2]});
+ const re=/\(\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*\)/g;let a=[],m;while((m=re.exec(s)))a.push({x:+m[1],y:+m[2]});
  if(a.length<2)throw Error('Enter at least two points as (x,y) pairs');
- const leftover=s.replace(re,'').replace(/[\\s,;]+/g,'');if(leftover)throw Error('Use points in the form (x,y), (x,y)');
+ const leftover=s.replace(re,'').replace(/[\s,;]+/g,'');if(leftover)throw Error('Use points in the form (x,y), (x,y)');
  a.sort((p,q)=>p.x-q.x);if(a.some((p,i)=>i>0&&p.x===a[i-1].x))throw Error('Use just one output for each x-value');
  return a;
 }
