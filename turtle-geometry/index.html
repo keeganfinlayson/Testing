@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Turtle Geometry · Two Views</title>
+<style>
+:root{--ink:#172d43;--navy:#213e56;--blue:#1478ae;--blue-light:#dceef8;--orange:#ec9a37;--green:#79be55;--bg:#f3f7fa;--card:#fff;--muted:#627589;--outline:#d4e0e9}
+*{box-sizing:border-box}body{margin:0;font:15px/1.42 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.4}button:focus-visible,input:focus-visible{outline:3px solid #8cccec;outline-offset:3px}
+.app{width:min(1500px,100%);margin:auto;padding:17px 20px 22px;display:flex;flex-direction:column;gap:13px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}h1{margin:0;font-size:clamp(21px,2.4vw,29px);letter-spacing:-.025em;font-weight:800}header p{margin:2px 0 0;color:var(--muted)}.pill{background:#e2edf4;border:1px solid #c5d9e6;color:#31566f;padding:6px 11px;border-radius:100px;font-size:12px;font-weight:700;white-space:nowrap}
+.views{display:grid;grid-template-columns:1fr 1fr;gap:13px;min-height:375px}.view{background:var(--card);border:1px solid var(--outline);border-radius:15px;overflow:hidden;box-shadow:0 2px 8px #14344b0b;display:flex;flex-direction:column;min-width:0}.view-header{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;border-bottom:1px solid #e3ebf0}.view-header strong{font-size:14px}.view-header span{font-size:12px;color:var(--muted)}.canvas-wrap{position:relative;flex:1;min-height:320px}.canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none}.view-hint{position:absolute;bottom:10px;left:11px;background:#ffffffdf;color:#516a7d;font-size:11px;border-radius:6px;padding:5px 8px;pointer-events:none}.camera-mode{display:flex;gap:4px}.tiny{border:1px solid #cedde8;background:white;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;color:#527086}.tiny[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.panel{background:var(--card);border:1px solid var(--outline);border-radius:15px;padding:15px;box-shadow:0 2px 8px #14344b0b}.controls{display:grid;grid-template-columns:minmax(350px,1.25fr) minmax(260px,1fr) minmax(190px,.7fr);gap:16px;align-items:start}.control-section{min-width:0}.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#6b8191;font-weight:800;margin-bottom:9px}.controls-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.action{border:1px solid #b9cfdd;background:#f5f9fb;color:var(--navy);border-radius:9px;padding:10px 12px;font-weight:800;min-height:42px}.action:hover:not(:disabled){background:#e5f2fa}.action.primary{background:var(--blue);border-color:var(--blue);color:white}.action.primary:hover:not(:disabled){background:#086391}.action.orange{background:#fff2de;border-color:#e9c18d;color:#a86113}.num{width:64px;height:42px;border:1px solid #c3d5e0;border-radius:9px;padding:0 7px;text-align:center;font-weight:700;color:var(--ink)}.field{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:12px;font-weight:700}.sep{height:24px;width:1px;background:#d6e2ea;margin:0 2px}.demo-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}.command{display:inline-block;border:1px solid #d5e2ea;border-radius:7px;padding:5px 7px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#f5f8fa;color:#466074}.command.done{background:#e1f1e6;border-color:#a7d2b5;color:#287144}.command.active{background:#eaf2ff;border-color:#80aee6;color:#135a99;box-shadow:0 0 0 2px #d8e9ff}.secondary-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px}.text-btn{border:1px solid #d4e2eb;background:#fff;border-radius:8px;padding:7px 11px;font-weight:700;color:#436178;font-size:12px}.text-btn:hover:not(:disabled){background:#eaf3f9}.check{display:flex;gap:9px;align-items:center;margin:8px 0;color:#3b566c;font-size:13px;cursor:pointer}.check input{accent-color:var(--blue);width:16px;height:16px}.readout{display:flex;align-items:baseline;gap:6px;margin:10px 0 0}.readout strong{font-size:23px;font-variant-numeric:tabular-nums}.readout span{color:var(--muted);font-size:13px}.info{background:#eaf3f8;border-radius:10px;padding:8px 11px;font-size:12px;color:#3f637a;margin-top:9px}.status-line{display:flex;align-items:center;gap:8px;color:#597083;font-size:12px;padding:0 5px}.status-dot{height:7px;width:7px;background:#83b49a;border-radius:50%}#message{flex:1}footer{font-size:11px;color:#748b9b;text-align:right}
+@media(max-width:1000px){.controls{grid-template-columns:1fr 1fr}.options{grid-column:1 / -1;display:flex;gap:20px;flex-wrap:wrap}.options .eyebrow{width:100%;margin-bottom:0}.readout{margin-top:0}}
+@media(max-width:650px){.app{padding:10px;gap:10px}.views{grid-template-columns:1fr;gap:10px}.canvas-wrap{height:270px;min-height:270px;flex:none}.controls{grid-template-columns:1fr;gap:14px}.options{grid-column:auto;display:block}.view-header{height:42px}.pill{display:none}.action{padding:9px 10px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main class="app">
+<header><div><h1>Turtle Geometry <span style="color:#6b8ea7;font-weight:500">/ First Steps</span></h1><p>One turtle, two synchronized ways of seeing movement.</p></div><span class="pill">Move a distance · Turn through an angle</span></header>
+<section class="views" aria-label="Two synchronized perspectives">
+  <article class="view"><div class="view-header"><strong>Turtle perspective</strong><div class="camera-mode"><button class="tiny" id="chase" aria-pressed="true" type="button">Follow</button><button class="tiny" id="eyes" aria-pressed="false" type="button">Turtle eyes</button></div></div><div class="canvas-wrap"><canvas id="world" aria-label="Perspective showing the turtle traveling and turning"></canvas><div class="view-hint">The camera follows the turtle's direction</div></div></article>
+  <article class="view"><div class="view-header"><strong>Overhead geometry</strong><span id="overheadLabel">Looking straight down</span></div><div class="canvas-wrap"><canvas id="map" aria-label="Overhead map of turtle trail, turns, and extended lines"></canvas><div class="view-hint">Blue = traveled segment · Gray = extended line</div></div></article>
+</section>
+<section class="panel controls" aria-label="Turtle controls">
+  <div class="control-section"><div class="eyebrow">Move the turtle</div><div class="controls-row"><label class="field">Distance <input id="distance" class="num" aria-label="Forward distance in units" type="number" min="0.5" max="30" step="0.5" value="5"> units</label><button class="action primary" id="forward">↑ Forward</button><span class="sep"></span><label class="field">Angle <input id="angle" class="num" aria-label="Turn angle in degrees" type="number" min="1" max="360" step="5" value="60"> °</label><button class="action orange" id="left">↶ Left</button><button class="action orange" id="right">↷ Right</button></div><div class="secondary-row"><button id="undo" class="text-btn">↶ Undo</button><button id="reset" class="text-btn">Reset</button><span style="font-size:12px;color:#6e8496">Keyboard: ↑ forward · ← / → turn</span></div></div>
+  <div class="control-section"><div class="eyebrow">Example sequence</div><div class="controls-row"><button class="action primary" id="play">▶ Play example</button><button class="action" id="step">Step</button><button class="action" id="pause" disabled>Pause</button></div><div class="demo-list" id="demoList" aria-label="Example instructions"><span class="command">FORWARD 5</span><span class="command">LEFT 60</span><span class="command">FORWARD 4</span><span class="command">RIGHT 60</span><span class="command">FORWARD 5</span></div><div class="info" id="lesson">The turtle begins at A, facing north. Travel draws a segment; turning alone does not.</div></div>
+  <div class="control-section options"><div class="eyebrow">Show geometry</div><label class="check"><input type="checkbox" id="extension">Extend traveled segments into lines</label><label class="check"><input type="checkbox" id="angles" checked>Shaded turn sectors and arrows</label><label class="check"><input type="checkbox" id="labels" checked>Point and distance labels</label><div class="readout"><strong id="heading">0°</strong><span id="direction">from north, left positive</span></div></div>
+</section>
+<div class="status-line" aria-live="polite"><span class="status-dot"></span><span id="message">Ready. Choose Forward or play the example.</span></div>
+<footer>Geometry-driven prototype · No obstacles or scoring in this first build</footer>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const world=$('world'), map=$('map');
+const TAU=Math.PI*2, RAD=Math.PI/180;
+const example=[{type:'move',n:5,label:'FORWARD 5',help:'Travel 5 units from A to B. A new segment is drawn.'},{type:'turn',n:60,label:'LEFT 60',help:'Rotate 60° left at B. The turtle changes direction without moving.'},{type:'move',n:4,label:'FORWARD 4',help:'Travel from B to C in the new direction.'},{type:'turn',n:-60,label:'RIGHT 60',help:'Turn 60° right at C. The turtle faces the original direction again.'},{type:'move',n:5,label:'FORWARD 5',help:'Travel from C to D. AB and CD now have the same direction and are parallel.'}];
+let app, cam, frameLast=0, demoTimer=null;
+const clone=o=>JSON.parse(JSON.stringify(o));
+const initial=()=>({pos:{x:0,y:0},heading:0,points:[{x:0,y:0}],segments:[],turns:[],history:[],busy:false,animation:null,queue:[],demoIndex:0,auto:false,paused:false,cameraMode:'chase',showExt:false,showAngles:true,showLabels:true});
+function stopTimer(){if(demoTimer!==null){clearTimeout(demoTimer);demoTimer=null;}}
+function reset(){stopTimer();app=initial();cam={x:0,y:-4,h:0};$('lesson').textContent='The turtle begins at A, facing north. Travel draws a segment; turning alone does not.';setMessage('Ready. Choose Forward or play the example.');ui();}
+function setMessage(msg){$('message').textContent=msg;}
+function labelAt(i){const t=i%26;return String.fromCharCode(65+t)+(i>=26?Math.floor(i/26)+1:'');}
+function face(h){return {x:-Math.sin(h*RAD),y:Math.cos(h*RAD)}};
+function normalize(h){return ((h%360)+360)%360;}
+function snapshot(){return {pos:clone(app.pos),heading:app.heading,points:clone(app.points),segments:clone(app.segments),turns:clone(app.turns)}};
+function restore(s){app.pos=clone(s.pos);app.heading=s.heading;app.points=clone(s.points);app.segments=clone(s.segments);app.turns=clone(s.turns);}
+function beginAction(a){if(app.busy)return;app.busy=true;const start=performance.now(),pos=clone(app.pos),heading=app.heading;
+  const dur=a.type==='move'?Math.max(430,Math.min(1800,230*a.n)):Math.max(420,Math.min(1450,Math.abs(a.n)*9));
+  app.history.push(snapshot());app.animation={a,start,pos,heading,dur};setMessage(a.type==='move'?`Moving forward ${a.n} units…`:`Turning ${a.n>0?'left':'right'} ${Math.abs(a.n)}°…`);ui();}
+function completeAction(anim){const {a,pos,heading}=anim;
+  if(a.type==='move'){
+    const f=face(heading),end={x:pos.x+f.x*a.n,y:pos.y+f.y*a.n};app.pos=end;
+    app.segments.push({a:pos,b:end,len:a.n});app.points.push(clone(end));
+    setMessage(`Reached ${labelAt(app.points.length-1)} — traveled ${a.n} units.`);
+  }else{
+    app.heading=heading+a.n;app.turns.push({p:clone(pos),h:heading,n:a.n});
+    setMessage(`Turned ${Math.abs(a.n)}° ${a.n>0?'left':'right'} in place.`);
+  }
+  app.animation=null;app.busy=false;
+  if(app.auto && app.demoIndex<example.length){stopTimer();demoTimer=setTimeout(runNext,290);}
+  else if(app.auto && app.demoIndex===example.length){app.auto=false;app.paused=false;$('lesson').textContent='The last path faces the same direction as the first. Extend the segments to see the parallel lines.';setMessage('Example complete. Compare the first and last segments.');}
+  ui();
+}
+function animate(now){const dt=Math.min(.06,Math.max(.001,(now-frameLast)/1000||.016));frameLast=now;
+  if(app && app.animation){const anim=app.animation;if(!app.paused){const t=Math.min(1,(now-anim.start)/anim.dur),smooth=t*t*(3-2*t);if(anim.a.type==='move'){
+    const f=face(anim.heading);app.pos={x:anim.pos.x+f.x*anim.a.n*smooth,y:anim.pos.y+f.y*anim.a.n*smooth};
+  }else app.heading=anim.heading+anim.a.n*smooth;
+  if(t>=1)completeAction(anim);}}
+  if(app){const diff=((app.heading-cam.h+540)%360)-180;const k=1-Math.exp(-dt*3.2);cam.h+=diff*k;const kP=1-Math.exp(-dt*5.5);cam.x+=(app.pos.x-cam.x)*kP;cam.y+=(app.pos.y-cam.y)*kP;renderWorld();renderMap();if($('heading')){$('heading').textContent=`${normalize(app.heading).toFixed(0)}°`;}}
+  requestAnimationFrame(animate);
+}
+function queueAction(a){if(app.busy||app.auto)return;app.demoIndex=0;app.history.length=app.history.length;beginAction(a);}
+function playExample(){reset();app.auto=true;app.demoIndex=0;runNext();}
+function runNext(){stopTimer();if(app.busy||app.paused)return;if(app.demoIndex>=example.length){app.auto=false;ui();return;}const item=example[app.demoIndex];app.demoIndex++;$('lesson').textContent=item.help;beginAction(item);ui();}
+function stepDemo(){if(app.busy)return;if(app.demoIndex>=example.length||!app.demoIndex && app.history.length){reset();}app.auto=false;app.paused=false;runNext();}
+function togglePause(){if(!app.busy&&!app.auto)return;app.paused=!app.paused;if(!app.paused && app.animation){const anim=app.animation;anim.start=performance.now()-anim.elapsed;}else if(app.paused && app.animation){app.animation.elapsed=performance.now()-app.animation.start;}if(!app.paused&&app.auto&&!app.busy)runNext();ui();}
+function undo(){if(app.busy||app.auto||!app.history.length)return;restore(app.history.pop());app.demoIndex=0;setMessage('Last action undone.');ui();}
+function ui(){if(!app)return;const busy=app.busy||app.auto;
+ ['forward','left','right','undo'].forEach(id=>$(id).disabled=busy||id==='undo'&&!app.history.length);
+ $('step').disabled=app.busy;$('play').disabled=busy;$('reset').disabled=false;
+ $('pause').disabled=!app.busy&&!app.auto;$('pause').textContent=app.paused?'▶ Resume':'Ⅱ Pause';
+ [...$('demoList').children].forEach((el,i)=>{el.classList.toggle('done',i<app.demoIndex);el.classList.toggle('active',i===app.demoIndex-1&&app.busy);});
+ $('chase').setAttribute('aria-pressed',String(app.cameraMode==='chase'));$('eyes').setAttribute('aria-pressed',String(app.cameraMode==='eyes'));
+}
+function canvasSize(canvas){const r=canvas.getBoundingClientRect();const w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),d=Math.min(2,window.devicePixelRatio||1);if(canvas.width!==Math.round(w*d)||canvas.height!==Math.round(h*d)){canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);}const ctx=canvas.getContext('2d');ctx.setTransform(d,0,0,d,0,0);return {ctx,w,h};}
+function line(ctx,x1,y1,x2,y2,color,width=2,dash=[]){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();}
+function dot(ctx,x,y,r,fill,stroke=null,sw=2){ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.lineWidth=sw;ctx.strokeStyle=stroke;ctx.stroke();}}
+function pointText(ctx,tx,ty,str,color='#294c65',bg='white'){
+ ctx.save();ctx.font='700 12px system-ui';const wd=ctx.measureText(str).width+12;ctx.fillStyle=bg;ctx.strokeStyle='#c5d8e4';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(tx-wd/2,ty-16,wd,21,6);ctx.fill();ctx.stroke();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=color;ctx.fillText(str,tx,ty-5);ctx.restore();
+}
+function gridSpacing(scale){if(scale>=30)return 1;if(scale>=14)return 2;if(scale>=7)return 5;return 10;}
+function makeMapTransform(w,h){const coords=[...app.points,app.pos];let minX=Math.min(...coords.map(p=>p.x)),maxX=Math.max(...coords.map(p=>p.x)),minY=Math.min(...coords.map(p=>p.y)),maxY=Math.max(...coords.map(p=>p.y));
+ const dimX=Math.max(9,maxX-minX+4),dimY=Math.max(10,maxY-minY+5);
+ const zoom=Math.min((w-64)/dimX,(h-64)/dimY,52);
+ const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+ return {zoom,cx,cy,to(p){return {x:w/2+(p.x-cx)*zoom,y:h/2-(p.y-cy)*zoom}},world(x,y){return {x:cx+(x-w/2)/zoom,y:cy-(y-h/2)/zoom}}};
+}
+function drawArrowHead(ctx,x,y,angle,size,color){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-size,-size*.46);ctx.lineTo(-size,size*.46);ctx.closePath();ctx.fill();ctx.restore();}
+function drawSectorMap(ctx,tf,tr){const p=tf.to(tr.p),r=Math.min(30,Math.max(23,tf.zoom*.8));const n=tr.n,steps=Math.max(8,Math.ceil(Math.abs(n)/5));const at=h=>({x:p.x-Math.sin(h*RAD)*r,y:p.y-Math.cos(h*RAD)*r});
+ ctx.save();ctx.beginPath();ctx.moveTo(p.x,p.y);for(let i=0;i<=steps;i++){const t=i/steps,q=at(tr.h+n*t);ctx.lineTo(q.x,q.y);}ctx.closePath();ctx.fillStyle='rgba(237,151,41,.21)';ctx.fill();
+ ctx.strokeStyle='#df8c21';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();for(let i=0;i<=steps;i++){const q=at(tr.h+n*i/steps);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);}ctx.stroke();
+ const q=at(tr.h+n);const q0=at(tr.h+n-(n>0?6:-6));drawArrowHead(ctx,q.x,q.y,Math.atan2(q.y-q0.y,q.x-q0.x),9,'#d67d0c');
+ if(app.showLabels){const mid=at(tr.h+n*.5);const v=at(tr.h+n*.5);ctx.font='700 12px system-ui';ctx.textAlign='center';ctx.fillStyle='#9b580b';ctx.fillText(`${Math.abs(n).toFixed(0)}°`,v.x*1.0+(v.x-p.x)*.42,v.y+(v.y-p.y)*.42);}
+ ctx.restore();}
+function renderMap(){const {ctx,w,h}=canvasSize(map),tf=makeMapTransform(w,h);
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='#fbfcfd';ctx.fillRect(0,0,w,h);
+ const g=gridSpacing(tf.zoom),left=tf.world(0,0),right=tf.world(w,h),xmin=Math.min(left.x,right.x),xmax=Math.max(left.x,right.x),ymin=Math.min(left.y,right.y),ymax=Math.max(left.y,right.y);
+ ctx.strokeStyle='#e7edf2';ctx.lineWidth=1;ctx.beginPath();for(let x=Math.floor(xmin/g)*g;x<=xmax;x+=g){const q=tf.to({x,y:0});ctx.moveTo(q.x,0);ctx.lineTo(q.x,h);}for(let y=Math.floor(ymin/g)*g;y<=ymax;y+=g){const q=tf.to({x:0,y});ctx.moveTo(0,q.y);ctx.lineTo(w,q.y);}ctx.stroke();
+ if(app.showExt){for(const s of app.segments){const dx=s.b.x-s.a.x,dy=s.b.y-s.a.y,len=Math.hypot(dx,dy)||1;const q1=tf.to({x:s.a.x-dx/len*1000,y:s.a.y-dy/len*1000}),q2=tf.to({x:s.b.x+dx/len*1000,y:s.b.y+dy/len*1000});line(ctx,q1.x,q1.y,q2.x,q2.y,'#9db1c0',2,[8,7]);}}
+ for(const s of app.segments){const a=tf.to(s.a),b=tf.to(s.b);line(ctx,a.x,a.y,b.x,b.y,'#a7d5ed',10);line(ctx,a.x,a.y,b.x,b.y,'#147bad',4.5);}
+ if(app.animation?.a.type==='move'){const a=tf.to(app.animation.pos),b=tf.to(app.pos);line(ctx,a.x,a.y,b.x,b.y,'#b4dbea',9);line(ctx,a.x,a.y,b.x,b.y,'#147bad',4.5);}
+ if(app.showAngles){for(const tr of app.turns)drawSectorMap(ctx,tf,tr);if(app.animation?.a.type==='turn'){const an=app.animation;drawSectorMap(ctx,tf,{p:an.pos,h:an.heading,n:app.heading-an.heading});}}
+ if(app.showLabels){for(let i=0;i<app.segments.length;i++){const s=app.segments[i],mid=tf.to({x:(s.a.x+s.b.x)/2,y:(s.a.y+s.b.y)/2});const q1=tf.to(s.a),q2=tf.to(s.b);const dx=q2.x-q1.x,dy=q2.y-q1.y,d=Math.hypot(dx,dy)||1;const nx=dy/d,ny=-dx/d;ctx.save();ctx.fillStyle='#236889';ctx.font='700 12px system-ui';ctx.textAlign='center';ctx.fillText(`${s.len} units`,mid.x+nx*14,mid.y+ny*14);ctx.restore();}}
+ for(let i=0;i<app.points.length;i++){const q=tf.to(app.points[i]);dot(ctx,q.x,q.y,4.5,'white','#1e5473',2.2);if(app.showLabels){const offset=i%2===0?{x:-17,y:23}:{x:18,y:-6};pointText(ctx,q.x+offset.x,q.y+offset.y,labelAt(i));}}
+ const p=tf.to(app.pos),hRad=app.heading*RAD,fx=-Math.sin(hRad),fy=-Math.cos(hRad),rx=-fy,ry=fx;
+ ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(fy,fx));ctx.shadowColor='#153c5999';ctx.shadowBlur=10;ctx.fillStyle='#7dc653';ctx.strokeStyle='#27583d';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(17,0);ctx.lineTo(-9,-11);ctx.quadraticCurveTo(-15,0,-9,11);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ // Draw the forward-facing pointer as an overlay for visibility.
+ const q={x:p.x+fx*24,y:p.y+fy*24};line(ctx,p.x,p.y,q.x,q.y,'#236341',2.5);drawArrowHead(ctx,q.x,q.y,Math.atan2(fy,fx),8,'#236341');
+}
+function worldCamera(w,h){const isEye=app.cameraMode==='eyes',f=face(cam.h);const behind=isEye?-.1:4.0;const height=isEye?1.13:2.45;const pos={x:cam.x-f.x*behind,y:cam.y-f.y*behind,z:height};const pitch=isEye?.08:.195;
+ const cs=Math.cos(pitch),sn=Math.sin(pitch),right={x:Math.cos(cam.h*RAD),y:Math.sin(cam.h*RAD)};
+ const focal=h/(2*Math.tan(64*Math.PI/360));
+ function cameraCoords(pt){const dx=pt.x-pos.x,dy=pt.y-pos.y,dz=(pt.z||0)-pos.z;const along=dx*f.x+dy*f.y,lateral=dx*right.x+dy*right.y;return {x:lateral,y:along*sn+dz*cs,z:along*cs-dz*sn};}
+ function toScreen(c){if(c.z<=.14)return null;return {x:w*.5+focal*c.x/c.z,y:h*.52-focal*c.y/c.z,z:c.z};}
+ return {pos,pitch,focal,cameraCoords,toScreen,project(pt){return toScreen(cameraCoords(pt));},h,w,isEye};
+}
+function projectLine(ctx,camera,a,b,col,width=2,dash=[]){let u=camera.cameraCoords(a),v=camera.cameraCoords(b);const near=.18;if(u.z<near&&v.z<near)return; if(u.z<near){const t=(near-u.z)/(v.z-u.z);u={x:u.x+(v.x-u.x)*t,y:u.y+(v.y-u.y)*t,z:near};}if(v.z<near){const t=(near-v.z)/(u.z-v.z);v={x:v.x+(u.x-v.x)*t,y:v.y+(u.y-v.y)*t,z:near};}const p=camera.toScreen(u),q=camera.toScreen(v);if(p&&q)line(ctx,p.x,p.y,q.x,q.y,col,width,dash);}
+function projectPolygon(ctx,camera,pts,fill,stroke=null,sw=2){const q=pts.map(p=>camera.project(p));if(q.some(p=>!p))return;ctx.save();ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=sw;ctx.stroke();}ctx.restore();}
+function drawGroundSector(ctx,camera,tr){if(Math.abs(tr.n)<1)return;const n=Math.max(7,Math.ceil(Math.abs(tr.n)/7)),r=.95,p=tr.p;const rad=(a,rr=r)=>({x:p.x-Math.sin(a*RAD)*rr,y:p.y+Math.cos(a*RAD)*rr,z:.018});const poly=[{...p,z:.017}];for(let i=0;i<=n;i++)poly.push(rad(tr.h+tr.n*i/n));projectPolygon(ctx,camera,poly,'rgba(240,160,52,.29)');for(let i=0;i<n;i++)projectLine(ctx,camera,rad(tr.h+tr.n*i/n,.97),rad(tr.h+tr.n*(i+1)/n,.97),'#d88d30',2.6);const q=rad(tr.h+tr.n),q0=rad(tr.h+tr.n-(tr.n>0?8:-8));const p1=camera.project(q),p0=camera.project(q0);if(p1&&p0)drawArrowHead(ctx,p1.x,p1.y,Math.atan2(p1.y-p0.y,p1.x-p0.x),8,'#df922d');}
+function drawTurtle(ctx,camera){if(camera.isEye)return;const at=camera.project({...app.pos,z:0});if(!at)return;const scale=Math.min(1.3,Math.max(.65,340/Math.max(300,camera.h)));ctx.save();ctx.translate(at.x,at.y);ctx.scale(scale,scale);
+ ctx.fillStyle='#16334938';ctx.beginPath();ctx.ellipse(0,0,31,10,0,0,TAU);ctx.fill();
+ // Legs and head make the turtle identifiable from the trailing camera.
+ ctx.fillStyle='#6ab850';ctx.strokeStyle='#3c753d';ctx.lineWidth=2;
+ for(const p of [[-24,-2],[24,-2],[-21,-18],[21,-18]]){ctx.beginPath();ctx.ellipse(p[0],p[1],9,7,0,0,TAU);ctx.fill();ctx.stroke();}
+ ctx.beginPath();ctx.ellipse(0,-33,12,13,0,0,TAU);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#8dcc53';ctx.strokeStyle='#315f40';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,-13,27,22,0,0,TAU);ctx.fill();ctx.stroke();
+ ctx.strokeStyle='#5e8e3f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-12,-24);ctx.lineTo(0,-29);ctx.lineTo(13,-24);ctx.lineTo(17,-11);ctx.lineTo(0,-1);ctx.lineTo(-17,-11);ctx.closePath();ctx.stroke();ctx.beginPath();ctx.moveTo(0,-29);ctx.lineTo(0,-1);ctx.stroke();
+ const d=app.heading-cam.h;const lateral=Math.sin(d*RAD);ctx.fillStyle='#255334';ctx.beginPath();ctx.arc(lateral*7,-34,2.7,0,TAU);ctx.fill();
+ ctx.restore();}
+function drawCompass(ctx,w,h){ctx.save();const x=w-34,y=36;ctx.fillStyle='#ffffffd9';ctx.strokeStyle='#d0e1ed';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,21,0,TAU);ctx.fill();ctx.stroke();const diff=(0-cam.h)*RAD;ctx.translate(x,y);ctx.rotate(diff);line(ctx,0,12,0,-12,'#bd6f23',2);drawArrowHead(ctx,0,-14,-Math.PI/2,7,'#ce7926');ctx.restore();ctx.fillStyle='#537388';ctx.font='700 10px system-ui';ctx.textAlign='center';ctx.fillText('N',x,y+29);}
+function renderWorld(){const {ctx,w,h}=canvasSize(world),camera=worldCamera(w,h),pitch=camera.pitch,hor=h*.52-camera.focal*Math.tan(pitch);
+ ctx.clearRect(0,0,w,h);
+ const sky=ctx.createLinearGradient(0,0,0,Math.max(0,hor));sky.addColorStop(0,'#c8e9fb');sky.addColorStop(1,'#eef8ff');ctx.fillStyle=sky;ctx.fillRect(0,0,w,Math.max(0,hor));
+ const ground=ctx.createLinearGradient(0,hor,0,h);ground.addColorStop(0,'#e6e8d9');ground.addColorStop(.9,'#e1e4d7');ctx.fillStyle=ground;ctx.fillRect(0,Math.max(0,hor),w,h);
+ line(ctx,0,hor,w,hor,'#aac8d0',1.5);
+ // Ground grid: world-coordinate squares. They do not rotate independently of the turtle.
+ const floor=12,gridSize=2;const center=app.pos;let minX=Math.floor((center.x-floor)/gridSize)*gridSize,maxX=Math.ceil((center.x+floor)/gridSize)*gridSize,minY=Math.floor((center.y-floor)/gridSize)*gridSize,maxY=Math.ceil((center.y+floor)/gridSize)*gridSize;
+ for(let x=minX;x<=maxX;x+=gridSize)projectLine(ctx,camera,{x,y:minY,z:.005},{x,y:maxY,z:.005},'#b6c6bb88',1);
+ for(let y=minY;y<=maxY;y+=gridSize)projectLine(ctx,camera,{x:minX,y,z:.005},{x:maxX,y,z:.005},'#b6c6bb88',1);
+ if(app.showExt){for(const s of app.segments){const dx=s.b.x-s.a.x,dy=s.b.y-s.a.y,L=Math.hypot(dx,dy)||1,ext=40;projectLine(ctx,camera,{x:s.a.x-dx/L*ext,y:s.a.y-dy/L*ext,z:.022},{x:s.b.x+dx/L*ext,y:s.b.y+dy/L*ext,z:.022},'#859dab',3,[9,8]);}}
+ if(app.showAngles){for(const t of app.turns)drawGroundSector(ctx,camera,t);if(app.animation?.a.type==='turn')drawGroundSector(ctx,camera,{p:app.animation.pos,h:app.animation.heading,n:app.heading-app.animation.heading});}
+ for(const seg of app.segments){projectLine(ctx,camera,{...seg.a,z:.05},{...seg.b,z:.05},'#80c4e7',11);projectLine(ctx,camera,{...seg.a,z:.061},{...seg.b,z:.061},'#117bb4',5);}
+ if(app.animation?.a.type==='move'){projectLine(ctx,camera,{...app.animation.pos,z:.05},{...app.pos,z:.05},'#80c4e7',11);projectLine(ctx,camera,{...app.animation.pos,z:.061},{...app.pos,z:.061},'#117bb4',5);}
+ for(let i=0;i<app.points.length;i++){const p=app.points[i],q=camera.project({...p,z:.07});if(!q||q.x<-20||q.x>w+20||q.y<0||q.y>h+25)continue;const rad=Math.max(3,Math.min(9,45/q.z));dot(ctx,q.x,q.y,rad,'#fff','#1a6e99',2.5);if(app.showLabels){ctx.save();ctx.font='700 13px system-ui';ctx.fillStyle='#244f6e';ctx.textAlign='center';ctx.fillText(labelAt(i),q.x,q.y-12);ctx.restore();}}
+ drawTurtle(ctx,camera);drawCompass(ctx,w,h);
+ if(camera.isEye){ctx.fillStyle='#ffffffc8';ctx.strokeStyle='#597c8a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(w/2,h*.54,6,0,TAU);ctx.stroke();line(ctx,w/2-13,h*.54,w/2-6,h*.54,'#668c9e',1.6);line(ctx,w/2+6,h*.54,w/2+13,h*.54,'#668c9e',1.6);}
+}
+$('forward').addEventListener('click',()=>{const n=Math.max(.5,Math.min(30,Number($('distance').value)||5));queueAction({type:'move',n});});
+$('left').addEventListener('click',()=>{const n=Math.max(1,Math.min(360,Number($('angle').value)||60));queueAction({type:'turn',n});});
+$('right').addEventListener('click',()=>{const n=Math.max(1,Math.min(360,Number($('angle').value)||60));queueAction({type:'turn',n:-n});});
+$('reset').addEventListener('click',reset);$('undo').addEventListener('click',undo);$('play').addEventListener('click',playExample);$('step').addEventListener('click',stepDemo);$('pause').addEventListener('click',togglePause);
+$('chase').addEventListener('click',()=>{app.cameraMode='chase';ui();});$('eyes').addEventListener('click',()=>{app.cameraMode='eyes';ui();});
+$('extension').addEventListener('change',e=>app.showExt=e.target.checked);$('angles').addEventListener('change',e=>app.showAngles=e.target.checked);$('labels').addEventListener('change',e=>app.showLabels=e.target.checked);
+window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement||e.altKey||e.ctrlKey||e.metaKey)return;if(e.key==='ArrowUp'){e.preventDefault();$('forward').click();}if(e.key==='ArrowLeft'){e.preventDefault();$('left').click();}if(e.key==='ArrowRight'){e.preventDefault();$('right').click();}});
+reset();requestAnimationFrame(animate);
+</script>
+</body></html>
