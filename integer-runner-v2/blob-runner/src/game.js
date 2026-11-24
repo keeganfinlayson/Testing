@@ -242,13 +242,32 @@ function crowd(x,y,sc,value,cap=budget,label=true,feed=null,key='player'){
  if(label)armyLabels.push({x:W/2+(cx-cameraX)*half*sc,text:signed(value),color:sign>0?'#087dcc':'#cc3654',size:Math.max(13,22*sc*unit),below:key==='player',bounds,key});
 }
 function pad(item,d,selected){
- const p=project(item.x,d),rx=Math.max(22,half*.25*p.sc),ry=rx*.42;
- ctx.fillStyle='#1b3a4738';ctx.beginPath();ctx.ellipse(p.x,p.y+4*p.sc,rx*1.06,ry*1.08,0,0,7);ctx.fill();
- ctx.save();ctx.shadowColor='#75e9ff';ctx.shadowBlur=selected?15:6;
- ctx.fillStyle=selected?'#2badd8':'#216d96';ctx.strokeStyle=selected?'#ecffff':'#73d7ef';ctx.lineWidth=selected?3:1.8;
- ctx.beginPath();ctx.ellipse(p.x,p.y,rx,ry,0,0,7);ctx.fill();ctx.stroke();ctx.restore();
- ctx.strokeStyle='#d7ffff66';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(p.x,p.y,rx*.89,ry*.75,0,0,7);ctx.stroke();
- ctx.fillStyle='#fff';ctx.font=`850 ${Math.max(13,Math.min(26,28*p.sc*unit))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(item.label,p.x,p.y-1);
+ // Operations lie in the stone as light, using the boss arena's sign palette.
+ const p=project(item.x,d),negative=/[−-]/.test(item.label);
+ const color=negative?{glow:'255,76,110',edge:'#ff93a8',ink:'#fff3f5',outline:'#572234'}
+   :{glow:'51,197,244',edge:'#a8edff',ink:'#f8ffff',outline:'#173e5a'};
+ const rx=Math.max(24,half*.235*p.sc);
+ const pulse=1+.045*Math.sin(time*5+item.x*4);
+ ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,.60);
+ ctx.globalCompositeOperation='screen';
+ const light=ctx.createRadialGradient(0,0,0,0,0,rx*1.95);
+ const power=selected?.47:.34;
+ light.addColorStop(0,`rgba(${color.glow},${power+.06})`);
+ light.addColorStop(.42,`rgba(${color.glow},${power*.70})`);
+ light.addColorStop(1,`rgba(${color.glow},0)`);
+ ctx.fillStyle=light;ctx.beginPath();ctx.arc(0,0,rx*1.95,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle=color.edge;ctx.globalAlpha=selected?.95:.68;
+ ctx.lineWidth=selected?2.5:1.7;
+ ctx.beginPath();ctx.ellipse(0,0,rx*pulse,rx*.66,0,0,Math.PI*2);ctx.stroke();
+ ctx.restore();
+ ctx.save();ctx.translate(p.x,p.y);ctx.scale(1,.72);
+ ctx.globalCompositeOperation='source-over';
+ ctx.font=`italic 850 ${Math.max(19,Math.min(34,35*p.sc*unit))}px system-ui`;
+ ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+ ctx.strokeStyle=color.outline;ctx.lineWidth=5.5;ctx.strokeText(item.label,0,0);
+ ctx.strokeStyle=negative?'#c5425e':'#2388b9';ctx.lineWidth=2.5;ctx.strokeText(item.label,0,0);
+ ctx.fillStyle=color.ink;ctx.fillText(item.label,0,0);
+ ctx.restore();
 }
 function gate(d){
  const p=project(0,d),roadHalf=half*p.sc,gateHeight=170*p.sc*unit;
