@@ -4,6 +4,9 @@
 <canvas id="game" aria-label="Forward scrolling signed integer swarm runner. Use left and right arrow keys or drag to steer."></canvas>
 <header><div class="brand"><strong>Integer Runner</strong><span class="release-version">v2.0 preview</span><span>Widescreen Visual Build</span></div><div class="tools"><button id="levels">Levels</button><button id="help">Help</button><button id="restart">Restart</button><button id="full">Fullscreen</button><button id="pause">Pause</button></div></header>
 <div id="levelHud"></div>
+<div id="upcoming" data-kind="positive" hidden aria-label="Upcoming mathematical gate">
+  <div id="upcomingTitle"></div><div id="upcomingDetail"></div>
+</div>
 <div id="notice" role="status" aria-live="polite">Look ahead. Choose your route.</div><div id="pauseVeil" hidden>Paused</div>
 <footer><div class="steering"><button id="left" aria-label="Steer left">←</button><button id="right" aria-label="Steer right">→</button></div><div class="progress" aria-label="Level progress"><i id="progress"></i></div><div class="sample">Crowd detail is representative.<br>Labels are exact.</div></footer>
 <dialog id="intro"><div class="eyebrow">Integer Runner · Integer Run</div><h1>Choose your run.</h1><p>Look ahead, steer, and keep your swarm alive. Every course has several successful routes.</p>
