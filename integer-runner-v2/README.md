@@ -17,3 +17,14 @@ The boss page in this folder contains the revised square arena with four straigh
 
 ## Test status
 The JavaScript files were syntax-checked. A Chromium smoke test of the quiet course background ran without page errors. A mocked Canvas runtime check of the published square boss rendered without throwing, kept 100 scripted movements within the new bounds, and produced four incoming groups (two blue, two red) from separate corners. Full visual and gameplay testing of the deployed Pages site, especially performance and course-to-boss transitions, is still required before promotion.
+
+## Bridge depth and early gate warnings — November 24, 2026
+
+- Tall, continuous stone parapets with simple top caps, world-fixed seam spacing and regularly placed buttresses. The surface stays subdued gray and the joints remain low contrast.
+- Longer visible bridge perspective, with road, rails and supports progressively dissolving into the mist before the vanishing point. Quiet layered jungle silhouettes and horizontal valley haze appear behind the bridge.
+- Small noninteractive advance warning above the playfield: **BLUE GATE AHEAD** (positive army), **RED GATE AHEAD** (negative army), or **SIZE GATE AHEAD** (nonzero magnitude below the gate's capacity). It changes from *In the distance* to *Approaching* to *Coming up*, before the actual gate, without covering math objects.
+- Course model, runner arithmetic, boss rules, and the main published repository are unchanged.
+
+### Test notes
+
+Source syntax and mocked Canvas drawing checks completed at 1366×768 and 1920×1080, with no exceptions or unbalanced canvas state. Warning state is tested across all three courses. The GitHub Pages build still needs hands-on visual/performance validation.
