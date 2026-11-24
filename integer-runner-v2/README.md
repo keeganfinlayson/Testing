@@ -37,3 +37,14 @@ Source syntax and mocked Canvas drawing checks completed at 1366×768 and 1920×
 - The level arithmetic, mathematical rules, boss encounter, and published main game are unchanged.
 
 Source changes are syntax-checked. Live visual and gameplay testing is required before promoting the build.
+
+## Boss operations v2.0.3 — November 24, 2026
+
+- Three ground-light choices per sign-wave cycle: positive addition, negative subtraction, and a third choice weighted **88% division, 12% multiplication**. Multiplication is usually ×(−1), with ×2 uncommon. Addition/subtraction values are modest (typically 2, 4, 6, or 8).
+- Division uses the mathematical ceiling: `7 ÷ 3 = 3` and `−7 ÷ 3 = −2`. Division that produces zero ends the attempt. The sign of the operation still determines red versus blue illumination.
+- Each spot first displays **one second of colored ground glow** without a label; its operation then fades in over 0.25 seconds before the spot can be activated. The glow and lettering colors match the operation sign.
+- Players may apply **one** of the three operations per complete boss cycle. All three fade after that use and reappear at fresh locations on the next sign-wave warning. This prevents immediately farming additions or multipliers without capping or falsifying the actual integer result.
+- The existing zero-crossing rule, boss HP, four signed enemy entrants, and rectangular arena remain unchanged.
+- Verified through mocked Canvas/runtime tests: operation label hidden before the glow completes, later visible, one-use-per-cycle behavior, recharge on next warning, positive/negative ceiling division, and weighted operation selection.
+
+The full hosted browser gameplay and deployment appearance have not yet been independently verified.
