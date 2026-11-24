@@ -110,7 +110,7 @@ function draw(g,{W,H,project,position=0,pair=null}){
      const xf1=lf+(rf-lf)*u1,xf2=lf+(rf-lf)*u2;
      polygon(g,[project(x1,nearZ),project(x2,nearZ+2),
       project(xf2,farZ),project(xf1,farZ-2)],
-      k===0?'rgba(69,88,80,.055)':'rgba(225,228,213,.075)');
+      k===0?'rgba(69,88,80,.11)':'rgba(225,228,213,.13)');
     }
    }
    // Occasional low-contrast moss at a side joint, never in the central lane.
