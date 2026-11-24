@@ -30,9 +30,9 @@ function updateAdvanceWarning(){
  const active=s&&(s.mode==='running'||s.mode==='paused');
  const target=active?LEVEL.rows.slice(s.next).find(row=>row.type==='signGate'||row.type==='gate'):null;
  const distance=target?Math.max(0,target.z-s.position):Infinity;
- const visible=!!target&&distance<=1750;
- const rounded=Math.ceil(distance/100)*100;
- const key=visible?`${target.id}:${rounded}`:'none';
+ const visible=!!target&&distance<=1900;
+ const proximity=distance>850?'In the distance':distance>400?'Approaching':'Coming up';
+ const key=visible?`${target.id}:${proximity}`:'none';
  if(key===lastGateWarning)return;
  lastGateWarning=key;
  ui.upcoming.hidden=!visible;
@@ -42,7 +42,7 @@ function updateAdvanceWarning(){
  ui.upcomingTitle.textContent=size?'SIZE GATE AHEAD':positive?'BLUE GATE AHEAD':'RED GATE AHEAD';
  const requirement=size?`Need 0 < |value| < ${target.capacity}`:
   positive?'Need a positive army':'Need a negative army';
- ui.upcomingDetail.textContent=`${requirement} · about ${rounded} units away`;
+ ui.upcomingDetail.textContent=`${requirement} · ${proximity}`;
 }
 const checkpointKey='integer-runner-v2-boss-checkpoint';let bossFrame=null;
 function bossURL(){return new URL('boss.html',location.href);}
