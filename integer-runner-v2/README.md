@@ -28,3 +28,12 @@ The JavaScript files were syntax-checked. A Chromium smoke test of the quiet cou
 ### Test notes
 
 Source syntax and mocked Canvas drawing checks completed at 1366×768 and 1920×1080, with no exceptions or unbalanced canvas state. Warning state is tested across all three courses. The GitHub Pages build still needs hands-on visual/performance validation.
+
+## Roadside warning signs and stone surface — November 24, 2026
+
+- Removed the floating gate-warning HUD and its explanatory text.
+- Added a single perspective-scaled sign on a post beside the right parapet before each relevant operation choice. Its only wording is **Warning Blue Gate**, **Warning Red Gate**, or **Warning Size Gate <5** (shown in two lines as “WARNING” and the gate type).
+- Road texture gains broad low-opacity wear patches anchored to fixed slab coordinates, preserving the quieter look and minimizing shimmer.
+- The level arithmetic, mathematical rules, boss encounter, and published main game are unchanged.
+
+Source changes are syntax-checked. Live visual and gameplay testing is required before promoting the build.

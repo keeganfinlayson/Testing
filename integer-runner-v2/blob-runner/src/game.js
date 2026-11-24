@@ -4,7 +4,7 @@
 const {operation,encounter,cancellation,signed,fits,signAllowed,LEVELS,DIFFICULTIES,makeLevel}=BlobMath;
 let LEVEL=makeLevel(),selectedLevel=0,difficulty='standard',runSeed=1;
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d',{alpha:false});
-const ui={notice:$('notice'),progress:$('progress'),upcoming:$('upcoming'),upcomingTitle:$('upcomingTitle'),upcomingDetail:$('upcomingDetail')};
+const ui={notice:$('notice'),progress:$('progress')};
 let W=0,H=0,dpr=1,half=0,horizon=0,near=0,unit=1,quality=1;
 const keys=new Set();let held=0,dragging=false,helpWasRunning=false;
 let cameraX=0,dragCameraX=0;
@@ -23,27 +23,6 @@ function project(x,d){const sc=1/(1+Math.max(-160,d)/510),far=1/(1+1670/510);ret
 function round(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
 function tag(x,y,text,color='#245d69',size=16){ctx.font=`800 ${size}px system-ui`;const width=ctx.measureText(text).width+18,height=size+13;ctx.fillStyle='#17364820';round(x-width/2,y-height/2+3,width,height,7);ctx.fill();ctx.fillStyle=color;round(x-width/2,y-height/2,width,height,7);ctx.fill();ctx.strokeStyle='#ffffffdd';ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle='white';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,x,y);}
 function message(text){ui.notice.textContent=text;}
-// Show the next gate early enough to inform arithmetic choices.
-// This preview is informational only; it never changes level logic.
-let lastGateWarning='';
-function updateAdvanceWarning(){
- const active=s&&(s.mode==='running'||s.mode==='paused');
- const target=active?LEVEL.rows.slice(s.next).find(row=>row.type==='signGate'||row.type==='gate'):null;
- const distance=target?Math.max(0,target.z-s.position):Infinity;
- const visible=!!target&&distance<=1900;
- const proximity=distance>850?'In the distance':distance>400?'Approaching':'Coming up';
- const key=visible?`${target.id}:${proximity}`:'none';
- if(key===lastGateWarning)return;
- lastGateWarning=key;
- ui.upcoming.hidden=!visible;
- if(!visible)return;
- const size=target.type==='gate',positive=!size&&target.sign>0;
- ui.upcoming.dataset.kind=size?'size':positive?'positive':'negative';
- ui.upcomingTitle.textContent=size?'SIZE GATE AHEAD':positive?'BLUE GATE AHEAD':'RED GATE AHEAD';
- const requirement=size?`Need 0 < |value| < ${target.capacity}`:
-  positive?'Need a positive army':'Need a negative army';
- ui.upcomingDetail.textContent=`${requirement} · ${proximity}`;
-}
 const checkpointKey='integer-runner-v2-boss-checkpoint';let bossFrame=null;
 function bossURL(){return new URL('boss.html',location.href);}
 function saveCheckpoint(cp){try{localStorage.setItem(checkpointKey,JSON.stringify(cp));}catch(e){}}
@@ -56,7 +35,7 @@ addEventListener('message',e=>{if(!bossFrame||e.source!==bossFrame.contentWindow
  if(e.data?.type==='integer-boss-win'){bossFrame.remove();bossFrame=null;try{localStorage.removeItem(checkpointKey);}catch(e){}stop('Dr. Fin defeated!',`You survived with ${signed(e.data.value)}.`,true);}
 });
 function reset(start=false){
- formations.clear();cameraX=0;dragCameraX=0;keys.clear();held=0;dragging=false;lastGateWarning='';s={mode:start?'running':'ready',position:0,value:LEVEL.start,x:0,target:0,next:0,incoming:[],spawned:[],passed:[],contacts:[],cancel:null,log:[],flash:0,end:false,won:false};
+ formations.clear();cameraX=0;dragCameraX=0;keys.clear();held=0;dragging=false;s={mode:start?'running':'ready',position:0,value:LEVEL.start,x:0,target:0,next:0,incoming:[],spawned:[],passed:[],contacts:[],cancel:null,log:[],flash:0,end:false,won:false};
  $('pause').textContent='Pause';$('pauseVeil').hidden=true;ui.progress.style.width='0%';message(LEVEL.rows[0].title);$('levelHud').textContent=`${selectedLevel+1} / ${LEVELS.length} · ${LEVEL.name} · ${DIFFICULTIES[difficulty].name}`;sync();
 }
 function sync(){canvas.setAttribute('aria-label',`Signed integer runner. Current army ${signed(s.value)}. Use left/right arrows or drag to steer.`);}
@@ -290,6 +269,43 @@ function pad(item,d,selected){
  ctx.fillStyle=color.ink;ctx.fillText(item.label,0,0);
  ctx.restore();
 }
+// One physical roadside sign ahead of each relevant math choice.
+// Its position is based on the preceding operation choice, not a screen HUD.
+function roadSignDistance(row,index){
+ const choice=LEVEL.rows.slice(0,index).reverse().find(r=>r.type==='pads');
+ return choice?Math.max(80,Math.min(row.z-220,choice.z-280)):row.z-570;
+}
+function drawRoadWarning(row,d){
+ const kind=row.type==='gate'?'size':row.sign>0?'positive':'negative';
+ const message=kind==='size'?`SIZE GATE <${row.capacity}`:kind==='positive'?'BLUE GATE':'RED GATE';
+ const accent=kind==='size'?'#c4cbb6':kind==='positive'?'#67c2ed':'#eb7c93';
+ const p=project(1.30,d),scale=p.sc;
+ // A billboard bolted to a physical roadside post. It scales with depth.
+ const width=264*scale,height=76*scale,top=p.y-183*scale;
+ const bx=p.x-width*.80,by=top;
+ ctx.save();
+ ctx.globalAlpha=clamp((LEVEL.view-d)/170,0,1);
+ // Two supports connect the warning to the outside edge of the masonry.
+ ctx.fillStyle='#63786f';
+ ctx.fillRect(p.x-7*scale,by+height-1*scale,8*scale,p.y-(by+height));
+ ctx.fillStyle='#b2b9ad';
+ ctx.fillRect(p.x-7*scale,by+height-1*scale,3*scale,p.y-(by+height));
+ ctx.fillStyle='rgba(24,44,42,.24)';
+ ctx.fillRect(bx+5*scale,by+6*scale,width,height);
+ ctx.fillStyle='#273c40';
+ ctx.fillRect(bx,by,width,height);
+ ctx.strokeStyle='#a9b8ad';ctx.lineWidth=Math.max(.8,2*scale);
+ ctx.strokeRect(bx,by,width,height);
+ ctx.fillStyle=accent;ctx.fillRect(bx+6*scale,by+6*scale,6*scale,height-12*scale);
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillStyle='#e0e8e4';
+ ctx.font=`800 ${Math.max(5,14*scale)}px system-ui`;
+ ctx.fillText('WARNING',bx+width*.53,by+height*.31,width-28*scale);
+ ctx.fillStyle='#fffdf8';
+ ctx.font=`850 ${Math.max(9,23*scale)}px system-ui`;
+ ctx.fillText(message,bx+width*.53,by+height*.69,width-28*scale);
+ ctx.restore();
+}
 function gate(d){
  const p=project(0,d),roadHalf=half*p.sc,gateHeight=170*p.sc*unit;
  // Opening follows the same radius-to-quantity mapping as the visible swarm.
@@ -329,7 +345,15 @@ function draw(){
  const mag=mix(v?v.mag:Math.abs(s.value),Math.abs(s.value),1-Math.exp(-dt*7));
  const fp=footprint(mag),margin=clamp(1-(fp.spread+fp.r)/half,.08,.95);
  cameraX=clamp(mix(v?v.cx:s.x,s.x,1-Math.exp(-dt*12)),-margin,margin);
- draws=0;armyBounds=[];armyLabels=[];updateAdvanceWarning();if(s.boss){BlobBoss.draw(ctx,W,H,s.boss,s.value,time,spriteFrames,tag);return;}scene();
+ draws=0;armyBounds=[];armyLabels=[];if(s.boss){BlobBoss.draw(ctx,W,H,s.boss,s.value,time,spriteFrames,tag);return;}scene();
+ // Road warnings are scenery objects: they appear well before the choice,
+ // and disappear once the player has passed them.
+ for(let i=LEVEL.rows.length-1;i>=s.next;i--){
+  const row=LEVEL.rows[i];
+  if(row.type!=='signGate'&&row.type!=='gate')continue;
+  const d=roadSignDistance(row,i)-s.position;
+  if(d>=0&&d<=LEVEL.view)drawRoadWarning(row,d);
+ }
  for(let i=LEVEL.rows.length-1;i>=s.next;i--){
   const row=LEVEL.rows[i],d=row.z-s.position;if(d>LEVEL.view||d<0)continue;
   if(row.type==='gate')gate(d);

@@ -98,6 +98,21 @@ function draw(g,{W,H,project,position=0,pair=null}){
     g.strokeStyle='rgba(78,101,91,.12)';g.lineWidth=1;
     g.beginPath();g.moveTo(mid.x,mid.y);g.lineTo(midfar.x,midfar.y);g.stroke();
    }
+   // Soft stone wear: broad, world-fixed patches rather than tiny repeating marks.
+   // Both location and color are deterministic per slab, preventing shimmer.
+   if(r-l>.4){
+    const hash=n=>{const v=Math.sin(n*127.17+index*31.71)*43758.5453;return v-Math.floor(v)};
+    for(let k=0;k<2;k++){
+     const u=.18+hash(k+1)*.54,width=.13+hash(k+8)*.19;
+     const nearZ=z+11+hash(k+14)*14,farZ=Math.min(za-5,nearZ+15+hash(k+22)*16);
+     const u1=Math.max(.06,u-width*.5),u2=Math.min(.94,u+width*.5);
+     const x1=l+(r-l)*u1,x2=l+(r-l)*u2;
+     const xf1=lf+(rf-lf)*u1,xf2=lf+(rf-lf)*u2;
+     polygon(g,[project(x1,nearZ),project(x2,nearZ+2),
+      project(xf2,farZ),project(xf1,farZ-2)],
+      k===0?'rgba(69,88,80,.055)':'rgba(225,228,213,.075)');
+    }
+   }
    // Occasional low-contrast moss at a side joint, never in the central lane.
    if(index%7===0){
     const m=project(l+.07*(r-l),z+7);
