@@ -8,6 +8,9 @@ function project(x,z){const d=z-s.forward,sc=1/(1+Math.max(-130,d)/510),far=1/(1
 // independent spots on the stone, selected afresh around the arena.
 const ARENA={halfW:1.8,nearZ:402,farZ:924,bossZ:864,unitZ:145};
 const roles=['addA','addB','mul'];
+const PAD_GLOW_SECONDS=1, PAD_TEXT_FADE=.25, MULTIPLY_CHANCE=.12;
+// The three illuminated choices give one operation per sign-wave cycle.
+// A new choice forms only when Dr. Fin starts the next warning phase.
 const random=(a,b)=>a+Math.random()*(b-a);
 function locationForPad(role){
  const others=(s.pads||[]).filter(p=>p.role!==role),old=(s.pads||[]).find(p=>p.role===role);
@@ -26,10 +29,16 @@ function locationForPad(role){
  return best;
 }
 const padDistance=(p)=>Math.hypot((p.x-s.x)/.23,(p.z-s.z)/(ARENA.unitZ*.23));
+function bossOperation(value,op){
+ // Mathematical ceiling, including negative quotients: −7 ÷ 3 = −2.
+ if(op.kind==='div')return Math.ceil(value/op.n);
+ return BlobMath.operation(value,op);
+}
 const crossesZero=(value,op)=>{
- if(op.kind!=='add'&&op.kind!=='sub')return false;
- const result=BlobMath.operation(value,op);
- return result===0||Math.sign(result)!==Math.sign(value);
+ const result=bossOperation(value,op);
+ if(op.kind==='add'||op.kind==='sub')
+  return result===0||Math.sign(result)!==Math.sign(value);
+ return result===0;
 };
 function additive(delta){
  const op=delta>0?{kind:'add',n:delta}:{kind:'sub',n:-delta};
@@ -39,23 +48,28 @@ function additive(delta){
 // until used, even if a wave or incoming army changes the player's value.
 function makeOperation(role,value){
  if(role==='mul'){
-  const factor=(s.round+s.padVisits.mul)%3===0?2:-1;
-  return {kind:'mul',n:factor,label:factor<0?'×(−1)':'×2'};
+  // The third light is division most of the time (88%); multiplication is rare.
+  // ×(−1) remains useful for changing sign; ×2 is very uncommon.
+  if(Math.random()<MULTIPLY_CHANCE){
+   const factor=Math.random()<.80?-1:2;
+   return {kind:'mul',n:factor,label:factor<0?'×(−1)':'×2'};
+  }
+  const choices=[2,3,4].filter(d=>d<=Math.abs(value));
+  const divisor=choices.length?choices[Math.floor(Math.random()*choices.length)]:1;
+  return {kind:'div',n:divisor,label:'÷'+divisor};
  }
- // Keep a positive and a negative additive available. The multiplier and
- // whichever additive has the player's sign are always nonlethal.
+ // Keep a positive and a negative additive, with modest values.
+ // The same-sign choice is safe; the third light provides a second
+ // safe choice when an opposite-signed addition would reach zero.
  const sign=role==='addA'?1:-1,mag=Math.abs(value);
- const candidates=[4,8,12,16].filter(amount=>sign===Math.sign(value)||amount<mag);
- // For very small armies there may be no safe opposite-signed addition.
- // The other additive and multiplication still provide two safe choices.
- const amounts=candidates.length?candidates:[Math.max(1,mag-1)];
- const amount=amounts[Math.floor(Math.random()*amounts.length)];
+ const amounts=[2,4,6,8].filter(n=>sign===Math.sign(value)||n<mag);
+ const amount=amounts.length?amounts[Math.floor(Math.random()*amounts.length)]:Math.max(1,mag-1);
  return additive(sign*amount);
 }
 function options(value=s.value){
  return s.pads.map(p=>({
   role:p.role,kind:p.op.kind,op:p.op,label:p.label,
-  result:BlobMath.operation(value,p.op),safe:!crossesZero(value,p.op)
+  result:bossOperation(value,p.op),safe:!crossesZero(value,p.op)
  }));
 }
 function nextPad(role){
@@ -66,21 +80,20 @@ function nextPad(role){
   active:true,readyAt:0,warnAt:0,bornAt:s.arenaClock};
 }
 function refreshPads(){
- s.padVisits={addA:0,addB:0,mul:0};
- s.pads=[]; for(const role of roles)s.pads.push(nextPad(role));
- s.padReady=true;
+ s.pads=[];for(const role of roles)s.pads.push(nextPad(role));
+ s.padReady=true;s.operationSpent=false;
  syncPads();
 }
 function syncPads(){
  // Refresh only derived safety/result data. Never rewrite a live spot.
  for(const pad of s.pads){
-  pad.result=BlobMath.operation(s.value,pad.op);
+  pad.result=bossOperation(s.value,pad.op);
   pad.safe=!crossesZero(s.value,pad.op);
  }
 }
 function updatePads(){ /* All three operation lights stay available. */ }
 function note(text){$('notice').textContent=text;s.log.push(text);if(s.log.length>20)s.log.shift();}
-function reset(){paused=false;$('pause').textContent='Pause';s={mode:'battle',forward:330,camera:0,x:0,z:460,tx:0,tz:460,value:entryArmy,hp:100,visualHP:100,sign:1,nextSign:-1,phase:'warn',timer:2.2,round:0,padVisits:{addA:0,addB:0,mul:0},padReady:true,arenaClock:0,pads:[],pulses:[],padGhosts:[],log:[],flip:0,wave:null,hit:0,placeAnim:0,poseMix:0,end:false,contact:0,canceling:false,absorbing:false,visualArmy:Math.abs(entryArmy)};refreshPads();note('Boss checkpoint · Dr. Fin starts at +100.');beginPhase('warn');$('result').hidden=true;}
+function reset(){paused=false;$('pause').textContent='Pause';s={mode:'battle',forward:330,camera:0,x:0,z:460,tx:0,tz:460,value:entryArmy,hp:100,visualHP:100,sign:1,nextSign:-1,phase:'warn',timer:2.2,round:0,padVisits:{addA:0,addB:0,mul:0},padReady:true,arenaClock:0,pads:[],pulses:[],padGhosts:[],log:[],flip:0,wave:null,hit:0,placeAnim:0,poseMix:0,end:false,contact:0,canceling:false,absorbing:false,visualArmy:Math.abs(entryArmy)};note('Boss checkpoint · Dr. Fin starts at +100.');beginPhase('warn');$('result').hidden=true;}
 function deploy(){
  s.placeAnim=.95;
  // Four independently moving armies enter from four separate parts of the
@@ -103,7 +116,10 @@ function deploy(){
  s.pulses=newPulses; // Exactly four entering groups at a time.
  note('Four groups entered from the arena edge: two blue (+), two red (−), each a different value.');
 }
-function beginPhase(name){s.phase=name;s.nextSign=-s.sign;s.timer=({warn:1.9,wave:1.4,attack:3.0,open:5.8,recover:1.0})[name];
+function beginPhase(name){
+ s.phase=name;s.nextSign=-s.sign;s.timer=({warn:1.9,wave:1.4,attack:3.0,open:5.8,recover:1.0})[name];
+ if(name==='warn'){s.padGhosts=[];refreshPads();}
+
  const messages={warn:`SIGN WAVE INCOMING: Dr. Fin is turning ${s.nextSign>0?'positive':'negative'}. ×(−1) flips your army on contact.`,wave:'The sign wave is moving toward you — touching it multiplies your army by −1.',attack:'Four different armies enter from the arena edge: two blue and two red. Same signs add; opposite signs cancel.',open:'Dr. Fin is exposed. Opposite signs hurt him; matching signs heal him.',recover:'Recover and prepare for the next sign wave.'};note(messages[name]);}
 
 function pulseResult(v,p){return v*p<0&&Math.abs(v)<=Math.abs(p)?0:v+p;}
@@ -121,10 +137,15 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
  s.x=clamp(s.x,-ARENA.halfW+.12,ARENA.halfW-.12);s.z=clamp(s.z,ARENA.nearZ+14,ARENA.farZ-18);
  s.camera+=(s.x*.55-s.camera)*Math.min(1,dt*9);
  updatePads();
- const tile=s.pads.findIndex(p=>p.active&&padDistance(p)<1);
- if(tile<0)s.padReady=true;
+ // A newly formed spot must show its operation before it can be used.
+ // Standing on an unrevealed glow will not trigger it when the text appears.
+ const onAnyLight=s.pads.some(p=>padDistance(p)<1);
+ const tile=s.pads.findIndex(p=>p.active&&
+  s.arenaClock-p.bornAt>=PAD_GLOW_SECONDS+PAD_TEXT_FADE&&padDistance(p)<1);
+ if(!onAnyLight)s.padReady=true;
+ else if(tile<0)s.padReady=false;
  if(s.padReady&&tile>=0){
-  const pad=s.pads[tile],old=s.value,result=BlobMath.operation(old,pad.op);
+  const pad=s.pads[tile],old=s.value,result=bossOperation(old,pad.op);
   s.padReady=false;
   if(crossesZero(old,pad.op)){
    // Crossing zero is a loss even when the signed answer is nonzero.
@@ -135,13 +156,11 @@ function step(dt){if(paused||s.end)return;clock+=dt;s.arenaClock+=dt;s.placeAnim
   }
   s.value=result;
   if(!s.value){stop(false);return;}
-  // Fade out the used light and form a new one immediately elsewhere.
-  // Keep all three available: multiplier + the matching-sign addition
-  // guarantee at least two safe choices without retargeting any old text.
-  s.padGhosts.push({...pad,expires:s.arenaClock+.52});
-  s.pads[tile]=nextPad(pad.role);
-  syncPads();
-  note(`${signed(old)} ${pad.label} = ${signed(s.value)}. A new light is forming elsewhere.`);
+  // Spend this cycle's ONE operation choice. No instant respawn,
+  // so repeated stepping on spots cannot inflate the army.
+  for(const spot of s.pads)s.padGhosts.push({...spot,expires:s.arenaClock+.52});
+  s.pads=[];s.operationSpent=true;
+  note(`${signed(old)} ${pad.label} = ${signed(s.value)}. Operations return with the next sign-wave warning.`);
  }
 
 
@@ -263,7 +282,8 @@ function draw(){scenery();supports();
  // labels or physical button discs. Spots fade out, then respawn elsewhere.
  if(s.mode!=='approach')for(const pad of [...s.padGhosts,...s.pads]){
   const ghost=pad.expires!==undefined;
-  const forming=!ghost&&pad.active&&(s.arenaClock-pad.bornAt)<.65;
+  const age=s.arenaClock-pad.bornAt;
+  const forming=!ghost&&pad.active&&age<PAD_GLOW_SECONDS;
   if(!ghost&&!pad.active)continue;
   const p=project(pad.x,pad.z),rx=half*.225*p.sc,ry=rx*.50;
   // The sign of the *operation* determines the light color.
@@ -276,7 +296,7 @@ function draw(){scenery();supports();
    rim:'128,225,255',shadow:'#41cfff',ink:'#f9ffff',outline:'#103957'
   };
   const timeIn=ghost?clamp((pad.expires-s.arenaClock)/.52,0,1):
-   clamp((s.arenaClock-pad.bornAt+.20)/.65,0,1);
+   clamp(age/PAD_GLOW_SECONDS,0,1);
   const power=timeIn*(.95+.05*Math.sin(clock*6+pad.x*3));
   // Measure the operation so long values like ×(−1) fit within the light.
   const fontPx=Math.max(38,54*p.sc);
@@ -299,12 +319,14 @@ function draw(){scenery();supports();
   g.strokeStyle=`rgba(${light.inner},${.40*power})`;
   g.lineWidth=Math.max(.8,1.3*p.sc);
   g.beginPath();g.ellipse(0,0,radiusX*1.15,rx*.87,0,0,Math.PI*2);g.stroke();
-  if(!ghost){
+  if(!ghost&&age>=PAD_GLOW_SECONDS){
+   // The colored glow arrives first; then the operation fades in.
+   const textOpacity=clamp((age-PAD_GLOW_SECONDS)/PAD_TEXT_FADE,0,1);
    // Switch away from screen blending for the letters themselves:
    // luminous white lettering needs a crisp, dark boundary on light stone.
    g.save();g.scale(1,1.16);
    g.globalCompositeOperation='source-over';
-   g.globalAlpha=power;
+   g.globalAlpha=power*textOpacity;
    g.textAlign='center';g.textBaseline='middle';
    g.font=`italic 900 ${fontPx}px system-ui`;
    g.lineJoin='round';
