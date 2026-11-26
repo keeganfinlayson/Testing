@@ -1,9 +1,9 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Function Runner — Graph Workshop v0.8</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Function Runner — Graph Workshop v0.9</title><style>
 *{box-sizing:border-box}body{margin:0;background:#e7eef1;color:#233951;font:15px system-ui,sans-serif}main{max-width:1440px;margin:auto;padding:14px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:clamp(23px,3vw,34px);margin:0;letter-spacing:-1px}small{color:#5b7082}.toolbar,.foot{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:10px 0}button,select{font:inherit;background:white;border:1px solid #aebfca;color:#233951;border-radius:8px;padding:9px 13px;cursor:pointer}button:hover{background:#edf6ff}button:focus-visible,select:focus-visible{outline:3px solid #de9e29}button.active{background:#dce9fc;border-color:#5078b6;font-weight:650}.primary{background:#f8cd62;border-color:#c09b3b;font-weight:750}.primary:hover{background:#ffe29a}button:disabled{opacity:.45;cursor:default}.spacer{flex:1}.stage{position:relative;border:2px solid #8196aa;border-radius:12px;overflow:hidden;background:#fff;height:clamp(330px,69vh,760px)}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}.hud:empty{display:none}.hud{position:absolute;top:12px;right:12px;background:#fffef4e8;border:1px solid #aebfca;border-radius:8px;padding:8px 12px;pointer-events:none;max-width:65%;font-weight:650}.foot{justify-content:space-between}#hint{flex:1;min-width:180px;color:#4a6275}#seek{flex:1;min-width:90px;accent-color:#466e9f}#timeline{display:flex;align-items:center;gap:9px;flex:1;min-width:200px}#timeline:not(.show){opacity:.45}#pause{min-width:72px}.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.chip{font-size:11px;background:#fff;border:1px solid #c7d2dd;border-radius:5px;padding:3px 6px}.chip.current{background:#f8cd62;border-color:#c09b3b}.status{font-variant-numeric:tabular-nums;color:#5b7082;font-size:12px}#tools{display:flex;flex-wrap:wrap;gap:6px}.note{font-size:12px;color:#657888;margin:5px 0} @media(max-width:600px){main{padding:8px}button,select{padding:8px 10px;font-size:13px}.stage{height:57vh}.toolbar{gap:5px}}
-</style></head><body><main><header><div><h1>Function Runner <small style="font-size:13px;letter-spacing:0">v0.8 · testing</small></h1><small>Draw a graph. See how he gets across it.</small></div><select id="preset" aria-label="Example graphs"><option value="">Examples…</option></select></header>
+</style></head><body><main><header><div><h1>Function Runner <small style="font-size:13px;letter-spacing:0">v0.9 · testing</small></h1><small>Draw a graph. See how he gets across it.</small></div><select id="preset" aria-label="Example graphs"><option value="">Examples…</option></select></header>
 <div class="toolbar"><div id="tools"><button data-tool="draw" class="active">Draw</button><button data-tool="segment">Segment</button><button data-tool="point">Point</button><button data-tool="move">Move</button><button data-tool="erase">Erase</button></div><button id="undo">Undo</button><button id="clear">Clear</button><span class="spacer"></span><button id="edit" disabled>Edit graph</button><button class="primary" id="run">▶ Run</button><button id="pause" disabled>Pause</button><button id="replay" disabled>Replay</button></div>
 <div class="stage"><canvas id="canvas" aria-label="Graph drawing and animated playback area"></canvas><div class="hud" id="hud">Draw a path</div></div>
-<div class="foot"><div id="hint">Drag to draw a curve. Leave empty space to create a break.</div><div id="timeline"><input type="range" id="seek" disabled min="0" max="1000" value="0" aria-label="Animation timeline"><span class="status" id="clock"></span></div><label><input id="grid" type="checkbox" checked> Grid</label><label><input id="snap" type="checkbox"> Snap to grid</label></div><div id="chips" class="chips" hidden></div><p class="note" hidden>The same coordinate plane is used for drawing and playback. Graph segments and isolated points remain unchanged during animation. Jumps and falls are character movements, not graph connections. Paths are traversed from their leftmost starting component; reverse-directed strokes are normalized by their endpoints. Undo restores the previous edit.</p></main>
+<div class="foot"><div id="hint">Drag to draw a curve. Leave empty space to create a break.</div><div id="timeline"><input type="range" id="seek" disabled min="0" max="1000" value="0" aria-label="Animation timeline"><span class="status" id="clock"></span></div><label><input id="grid" type="checkbox" checked> Grid</label><label><input id="snap" type="checkbox"> Snap to grid</label><label><input id="beats" type="checkbox"> Show movements</label></div><div id="chips" class="chips" hidden></div><p class="note" hidden>The same coordinate plane is used for drawing and playback. Graph segments and isolated points remain unchanged during animation. Jumps and falls are character movements, not graph connections. Paths are traversed from their leftmost starting component; reverse-directed strokes are normalized by their endpoints. Undo restores the previous edit.</p></main>
 <script>
 const E=(function engine(){
  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),mix=(a,b,u)=>({x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u});
@@ -48,15 +48,29 @@ const E=(function engine(){
    const raw=[];for(let i=1;i<pts.length;i++){const mid=(lengths[i-1]+lengths[i])/2,lo=Math.max(0,mid-.675),hi=Math.min(total,mid+.675),a=at(lo),b=at(hi),grade=(b.y-a.y)/(hi-lo||1);raw.push(grade>.94?"climb":grade>.66?"struggle":grade<-.86?"slide":grade<-.66?"downhill":"run")}
    // Remove brief changes of acting state. Preserve sustained hills and genuine vertical walls.
    for(let i=0;i<raw.length;){let k=i+1;while(k<raw.length&&raw[k]===raw[i])k++;const span=lengths[k]-lengths[i];if(raw[i]!=="run"&&span<.85)for(let z=i;z<k;z++)raw[z]="run";i=k}
-   let lastImpact=-10;
+   let lastImpact=-10,lastAct="run",lastTransitionAt=-10;
    for(let i=1;i<pts.length;i++){
     const a=pts[i-1],b=pts[i],len=dist(a,b),ang=angle(a,b),type=raw[i-1];if(len<1e-5)continue;
     if(i>1&&lengths[i-1]-lastImpact>2.4){
      const d=lengths[i-1],pre=at(d-.85),post=at(d+.85),g1=(a.y-pre.y)/Math.min(.85,d),g2=(post.y-a.y)/Math.min(.85,total-d);
      if(d>.65&&total-d>.65&&g1<-.65&&g2>.70&&Math.abs(wrap(angle(a,post)-angle(pre,a)))>1.5){hold("splat",a,.32,{ang:angle(a,post)});mishaps++;hold("peel",a,.62,{ang:angle(a,post)});lastImpact=d}
     }
+    // Direct a few recognizable, sustained acting beats rather than reacting to each drawn point.
+    if(type!==lastAct){
+      const position=lengths[i-1];
+      if(position-lastTransitionAt>1.25){
+        if((lastAct==="struggle"||lastAct==="climb")&&(type==="run"||type==="downhill")){
+          hold("crest",a,.27);lastTransitionAt=position;
+        }else if(type==="slide"&&lastAct!=="slide"){
+          hold("brace",a,.22);lastTransitionAt=position;
+        }else if(lastAct==="slide"&&type!=="slide"){
+          hold("recover",a,.36);lastTransitionAt=position;
+        }
+      }
+      lastAct=type;
+    }
     if(type==="struggle"||type==="climb")fatigue=Math.min(1,fatigue+len*.12);
-    const speed={run:3.05,struggle:2.95,climb:2.45,downhill:3.22,slide:3.65}[type];
+    const speed={run:3.05,struggle:2.98,climb:2.88,downhill:3.15,slide:3.27}[type];
     const approaching=!!next&&dist(last,next.pts[0])>.1;
     const remaining=total-lengths[i-1];
     add(type,a,b,len/speed,{ang,approaching,remaining,len});
@@ -88,7 +102,7 @@ const E=(function engine(){
 })();const {p,dist,clamp,mix,simplify,presets,plan,sample}=E;
 const $=id=>document.getElementById(id),canvas=$("canvas"),ctx=canvas.getContext("2d");
 let paths=[],asymptotes=[],history=[],tool="draw",mode="edit",drag=null,script=null,elapsed=0,playing=false,W=1000,H=600,S=45,cam=p(0,0),lastTime=0,phase=0;
-const labels={ready:"Ready",run:"Running",struggle:"Uphill struggle",downhill:"Downhill run",slide:"Sliding",climb:"Climbing",prepare:"Preparing to jump",jump:"Jumping",miss:"Missed jump",land:"Landing",wobble:"Balancing",splat:"Splat!",peel:"Recovering",slip:"Losing grip",fall:"Falling",celebrate:"Made it!",look:"Looking for the path",realize:"Uh-oh!",relief:"Made it… whew!"};
+const labels={ready:"Ready",run:"Running",struggle:"Uphill struggle",downhill:"Downhill run",slide:"Sliding",climb:"Climbing",crest:"Cresting the hill",brace:"Bracing for descent",recover:"Regaining balance",prepare:"Preparing to jump",jump:"Jumping",miss:"Missed jump",land:"Landing",wobble:"Balancing",splat:"Splat!",peel:"Recovering",slip:"Losing grip",fall:"Falling",celebrate:"Made it!",look:"Looking for the path",realize:"Uh-oh!",relief:"Made it… whew!"};
 const clone=v=>JSON.parse(JSON.stringify(v));const hints={draw:"Drag to draw a curve. Leave empty space to create a break.",segment:"Drag from one endpoint to another to create a straight segment.",point:"Click to place an isolated point.",move:"Drag a point or an entire connected stroke.",erase:"Drag across the graph to erase parts of the path."};
 function snapshot(){history.push(clone({paths,asymptotes}));if(history.length>60)history.shift();$("undo").disabled=false}
 function undo(){if(!history.length)return;const a=history.pop();paths=a.paths;asymptotes=a.asymptotes;$("undo").disabled=!history.length;render()}
@@ -111,10 +125,10 @@ document.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>choose(b.datas
 Object.entries(presets).forEach(([key,s])=>{const o=document.createElement("option");o.value=key;o.textContent=s.name;$("preset").append(o)});
 function loadPreset(key){if(!presets[key])return;edit();snapshot();paths=clone(presets[key].paths);asymptotes=clone(presets[key].asymptotes||[]);render()}
 $("preset").onchange=()=>loadPreset($("preset").value);
-function ui(){const play=mode==="play";document.querySelectorAll("[data-tool]").forEach(b=>b.disabled=play);$("undo").disabled=play||!history.length;$("clear").disabled=play;$("run").disabled=play;$("edit").disabled=!play;$("pause").disabled=!play;$("replay").disabled=!play;$("timeline").classList.toggle("show",play);$("seek").disabled=!play;$("snap").disabled=play;canvas.style.cursor=play?"default":"crosshair"}
+function ui(){const play=mode==="play";document.querySelectorAll("[data-tool]").forEach(b=>b.disabled=play);$("undo").disabled=play||!history.length;$("clear").disabled=play;$("run").disabled=play;$("edit").disabled=!play;$("pause").disabled=!play;$("replay").disabled=!play;$("timeline").classList.toggle("show",play);$("seek").disabled=!play;$("snap").disabled=play;$("chips").hidden=!play||!$("beats").checked;canvas.style.cursor=play?"default":"crosshair"}
 function edit(){playing=false;mode="edit";drag=null;script=null;$("seek").value=0;$("clock").textContent="";$("chips").replaceChildren();$("hint").textContent=hints[tool];ui();render()}
 function start(){if(!paths.length){$("hint").textContent="Draw a path or select an example first.";return}script=plan(paths);if(!script.clips.length)return;mode="play";elapsed=0;playing=true;$("pause").textContent="Pause";$("hint").textContent="";ui();buildChips();render()}
-$("run").onclick=start;$("edit").onclick=edit;$("replay").onclick=start;$("pause").onclick=()=>{if(elapsed>=script.time)elapsed=0;playing=!playing;$("pause").textContent=playing?"Pause":"Play"};$("seek").oninput=()=>{if(!script)return;elapsed=script.time*(+$("seek").value/1000);playing=false;$("pause").textContent="Play";render()};$("grid").onchange=render;
+$("run").onclick=start;$("edit").onclick=edit;$("replay").onclick=start;$("pause").onclick=()=>{if(elapsed>=script.time)elapsed=0;playing=!playing;$("pause").textContent=playing?"Pause":"Play"};$("seek").oninput=()=>{if(!script)return;elapsed=script.time*(+$("seek").value/1000);playing=false;$("pause").textContent="Play";render()};$("grid").onchange=render;$("beats").onchange=()=>{$("chips").hidden=!($("beats").checked&&mode==="play")};
 function buildChips(){const el=$("chips");el.replaceChildren();let prior=null;script.clips.forEach(c=>{if(c.type!==prior){const span=document.createElement("span");span.className="chip";span.textContent=labels[c.type];span.dataset.start=c.t;el.append(span);prior=c.type}})}
 function line(a,b,color,width=1){const A=screen(a),B=screen(b);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke()}
 function background(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#f9fcff");g.addColorStop(1,"#edf5f8");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
@@ -126,9 +140,12 @@ function inkPath(points,color="#493c38",width=1.4){ctx.strokeStyle=color;ctx.lin
 function pose(q,type){const u=q.u,t=q.t,falling=type==="fall"||type==="miss"||type==="realize",sliding=type==="slide",effort=type==="struggle"||type==="climb"||type==="splat";
  const run=["run","struggle","downhill","climb"].includes(type),a=Math.sin(t*13),b=Math.cos(t*13),jump=type==="jump"||type==="miss",wobble=type==="wobble";
  const crouch=type==="prepare"?Math.sin(u*Math.PI/2):type==="land"?Math.sin(Math.PI*Math.pow(u,.65)):type==="relief"?.45+.15*Math.sin(t*7):0;
- let lean=type==="climb"?.32:type==="struggle"?.18:type==="downhill"?-.14:sliding?-.52:wobble?Math.sin(u*5*Math.PI)*.31*(1-u):falling?Math.sin(t*6)*.25:0;
+ let lean=type==="climb"?.32:type==="struggle"?.18:type==="downhill"?-.14:sliding?-.52:type==="brace"?-.38:type==="recover"?-.24*(1-u):type==="crest"?-.08:wobble?Math.sin(u*5*Math.PI)*.31*(1-u):falling?Math.sin(t*6)*.25:0;
 
  const hip=[0,-38+13*crouch],shoulder=[0,-83+15*crouch],head=[4,-112+15*crouch];
+ if(type==="crest"){const lift=Math.sin(Math.PI*u);hip[1]-=3*lift;shoulder[1]-=9*lift;head[1]-=12*lift}
+ if(type==="brace"){hip[1]+=8;shoulder[0]-=7;head[0]-=7}
+ if(type==="recover"){hip[0]=-4+4*u;shoulder[0]-=12*(1-u);head[0]-=9*(1-u);hip[1]+=8*(1-u)}
  if(sliding){hip[0]=-8;hip[1]=-22;shoulder[0]=-12;shoulder[1]=-66;head[0]=-11;head[1]=-94}
  const stride=run?a*(type==="climb"?13:type==="struggle"?21:23):0;
  let f1=[-7-stride,run?-Math.max(0,a)*13:0],f2=[7+stride,run?-Math.max(0,-a)*13:0],k1=[-13-stride*.5,-20],k2=[13+stride*.5,-20];
@@ -141,6 +158,9 @@ function pose(q,type){const u=q.u,t=q.t,falling=type==="fall"||type==="miss"||ty
  if(jump||falling||type==="celebrate"){const wave=falling?Math.sin(t*20)*13:0;e1=[-22,-94+wave];h1=[-33,-112+wave];e2=[23,-94-wave];h2=[33,-112-wave]}
  if(wobble||type==="slip"){const swing=wobble?Math.sin(u*5*Math.PI)*(1-u)*19:12*a;e1=[-27,-77+swing*.4];h1=[-43,-84-swing];e2=[29,-77-swing*.4];h2=[44,-84+swing]}
  if(sliding){e1=[-33,-51];h1=[-39,-33];e2=[19,-44];h2=[26,-30]}
+ if(type==="crest"){e1=[-16,-64];h1=[-14,-48];e2=[20,-67];h2=[27,-56]}
+ if(type==="brace"){e1=[-29,-80];h1=[-46,-90];e2=[25,-72];h2=[41,-57]}
+ if(type==="recover"){const panic=1-u;e1=[-23,-70-13*panic];h1=[-38,-67-25*panic];e2=[22,-70+7*panic];h2=[38,-61+20*panic]}
  if(q.anticipation&&run){const w=q.anticipation*q.anticipation;e2=e2.map((x,i)=>x+([25,-84][i]-x)*w);h2=h2.map((x,i)=>x+([42,-91][i]-x)*w)}if(type==="relief"){e1=[-18,-40];h1=[-12,-26];e2=[18,-40];h2=[12,-26]}if(type==="splat"||type==="peel"){e1=[-19,-93];h1=[-18,-115];e2=[22,-90];h2=[31,-113]}
  return {hip,shoulder,head,f1,f2,k1,k2,e1,e2,h1,h2,lean};
 }
@@ -156,9 +176,9 @@ function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedMovem
  if(previous&&blendable){const duration=Math.min(.20,(q.clip.beatEnd-q.clip.beatStart)*.55);const w=smooth((t-q.clip.beatStart)/duration);if(w<1)blend(pose({...q,u:1,anticipation:0},previous),w)}
  const {hip,shoulder,head,f1,f2,k1,k2,e1,e2,h1,h2,lean}=P;
  // Plant the support foot at the graph contact point; slope is conveyed by body acting.
- const size=clamp(S/76,.30,.65),rot=type==="splat"?-Math.abs(q.ang)*.55:type==="peel"?-Math.abs(q.ang)*.55*(1-u):lean;
- const sx=type==="splat"?.63:type==="peel"?.63+.37*u:1,sy=type==="splat"?1.04:1;
- const ground=locomotion.has(type)||["ready","prepare","land","wobble","relief","celebrate","look","slip"].includes(type);
+ const size=clamp(S/76,.30,.65),rot=type==="fall"?u*Math.PI*1.75:type==="splat"?-Math.abs(q.ang)*.55:type==="peel"?-Math.abs(q.ang)*.55*(1-u):lean;
+ const sx=type==="splat"?.63:type==="peel"?.63+.37*u:type==="brace"?1.09:type==="recover"?1.09-.09*u:1,sy=type==="splat"?1.04:1;
+ const ground=locomotion.has(type)||["ready","prepare","land","wobble","relief","celebrate","look","slip","crest","brace","recover"].includes(type);
  // Soft transfer between support feet prevents sudden sideways snapping.
  const support=type==="wobble"?1:clamp(.5+(f1[1]-f2[1])/8,0,1);
  const foot=[f1[0]*support+f2[0]*(1-support),Math.max(f1[1],f2[1])],fx=(foot[0]+6)*sx,fy=(foot[1]+3)*sy;
@@ -196,9 +216,12 @@ function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedMovem
  if(effort||q.clip.fatigue>.6){ctx.fillStyle="#58a9c9";for(let i=0;i<3;i++){let z=(t*2+i/3)%1;ellipse(head[0]-22-z*18,head[1]-11-z*9,2.5,4,"#58a9c9",-.5)}}
  if(q.anticipation>.65||type==="realize"){inkPath([[28,-143],[34,-157]],"#c89028",3);inkPath([[39,-140],[49,-149]],"#c89028",3)}
  ctx.restore();
- if(type==="slide"||type==="land"){ctx.save();ctx.globalAlpha=type==="land"?Math.sin(Math.PI*u)*.55:.45;for(let i=0;i<4;i++){const z=(t*3+i*.22)%1;ellipse(v.x-8-z*24,v.y-3-z*6,3+z*5,2+z*3,"#b6aa98")}ctx.restore()}
+ if(type==="slide"||type==="land"||type==="recover"){ctx.save();ctx.globalAlpha=type==="land"?Math.sin(Math.PI*u)*.55:.45;for(let i=0;i<4;i++){const z=(t*3+i*.22)%1;ellipse(v.x-8-z*24,v.y-3-z*6,3+z*5,2+z*3,"#b6aa98")}ctx.restore()}
  if(type==="peel"){ctx.save();for(let i=0;i<3;i++){const a=t*6+i*2.094;const x=v.x+Math.cos(a)*19,y=v.y-55+Math.sin(a)*7;ctx.strokeStyle="#d6a33b";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x+3,y);ctx.moveTo(x,y-3);ctx.lineTo(x,y+3);ctx.stroke()}ctx.restore()}
  if(type==="splat"){ctx.save();ctx.translate(v.x,v.y-37*size);ctx.strokeStyle="#d6a33b";ctx.lineWidth=2.5;for(let i=0;i<5;i++){const a=-Math.PI/2+i*.7;ctx.beginPath();ctx.moveTo(Math.cos(a)*22,Math.sin(a)*22);ctx.lineTo(Math.cos(a)*34,Math.sin(a)*34);ctx.stroke()}ctx.restore()}
+ if(type==="fall"){ctx.save();ctx.strokeStyle="#95a9bb";ctx.lineWidth=1.5;ctx.globalAlpha=.65*(1-u*.5);for(let i=0;i<4;i++){const yy=v.y-70+i*15;ctx.beginPath();ctx.moveTo(v.x-16-i*4,yy-11);ctx.lineTo(v.x-23-i*4,yy-25);ctx.stroke()}ctx.restore()}
+ if(type==="celebrate"){ctx.save();ctx.strokeStyle="#d3a13a";ctx.lineWidth=2;const burst=Math.sin(Math.PI*u);for(let i=0;i<7;i++){const a=i*Math.PI*2/7,rr=(22+14*burst);ctx.beginPath();ctx.moveTo(v.x+Math.cos(a)*rr,v.y-74+Math.sin(a)*rr);ctx.lineTo(v.x+Math.cos(a)*(rr+7),v.y-74+Math.sin(a)*(rr+7));ctx.stroke()}ctx.restore()}
+ if(type==="crest"){ctx.save();ctx.globalAlpha=Math.sin(Math.PI*u)*.6;ctx.strokeStyle="#dfac43";ctx.lineWidth=2;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(v.x+7+i*8,v.y-69-i*4);ctx.lineTo(v.x+12+i*8,v.y-74-i*4);ctx.stroke()}ctx.restore()}
 }
 function render(){if(!W||!H)return;ctx.clearRect(0,0,W,H);background();graph();if(mode==="edit"){$("hud").textContent=paths.length?paths.length+" path"+(paths.length===1?"":"s")+" · ready to run":"Draw a path";return}const q=sample(script,elapsed);if(!q)return;runner(q);$("hud").textContent=elapsed>=script.time?(script.failed?"Try again":"Made it!"):"";$("seek").value=Math.round(elapsed/script.time*1000);$("clock").textContent=elapsed.toFixed(1)+" / "+script.time.toFixed(1)+" s";const chips=Array.from($("chips").children);let active=0;chips.forEach((el,i)=>{if(+el.dataset.start<=elapsed)active=i});chips.forEach((el,i)=>el.classList.toggle("current",i===active))}
 function frame(t){const dt=clamp((t-lastTime)/1000,0,.05);lastTime=t;if(mode==="play"&&playing){elapsed=Math.min(script.time,elapsed+dt);if(elapsed>=script.time){playing=false;$("pause").textContent="Play"}render()}requestAnimationFrame(frame)}
