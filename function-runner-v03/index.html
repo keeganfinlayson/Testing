@@ -1,6 +1,6 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Function Runner — Graph Workshop v0.5</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Function Runner — Graph Workshop v0.6</title><style>
 *{box-sizing:border-box}body{margin:0;background:#e7eef1;color:#233951;font:15px system-ui,sans-serif}main{max-width:1440px;margin:auto;padding:14px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:clamp(23px,3vw,34px);margin:0;letter-spacing:-1px}small{color:#5b7082}.toolbar,.foot{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:10px 0}button,select{font:inherit;background:white;border:1px solid #aebfca;color:#233951;border-radius:8px;padding:9px 13px;cursor:pointer}button:hover{background:#edf6ff}button:focus-visible,select:focus-visible{outline:3px solid #de9e29}button.active{background:#dce9fc;border-color:#5078b6;font-weight:650}.primary{background:#f8cd62;border-color:#c09b3b;font-weight:750}.primary:hover{background:#ffe29a}button:disabled{opacity:.45;cursor:default}.spacer{flex:1}.stage{position:relative;border:2px solid #8196aa;border-radius:12px;overflow:hidden;background:#fff;height:clamp(330px,69vh,760px)}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}.hud:empty{display:none}.hud{position:absolute;top:12px;right:12px;background:#fffef4e8;border:1px solid #aebfca;border-radius:8px;padding:8px 12px;pointer-events:none;max-width:65%;font-weight:650}.foot{justify-content:space-between}#hint{flex:1;min-width:180px;color:#4a6275}#seek{flex:1;min-width:90px;accent-color:#466e9f}#timeline{display:flex;align-items:center;gap:9px;flex:1;min-width:200px}#timeline:not(.show){opacity:.45}#pause{min-width:72px}.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.chip{font-size:11px;background:#fff;border:1px solid #c7d2dd;border-radius:5px;padding:3px 6px}.chip.current{background:#f8cd62;border-color:#c09b3b}.status{font-variant-numeric:tabular-nums;color:#5b7082;font-size:12px}#tools{display:flex;flex-wrap:wrap;gap:6px}.note{font-size:12px;color:#657888;margin:5px 0} @media(max-width:600px){main{padding:8px}button,select{padding:8px 10px;font-size:13px}.stage{height:57vh}.toolbar{gap:5px}}
-</style></head><body><main><header><div><h1>Function Runner <small style="font-size:13px;letter-spacing:0">v0.5 · testing</small></h1><small>Draw a graph. See how he gets across it.</small></div><select id="preset" aria-label="Example graphs"><option value="">Examples…</option></select></header>
+</style></head><body><main><header><div><h1>Function Runner <small style="font-size:13px;letter-spacing:0">v0.6 · testing</small></h1><small>Draw a graph. See how he gets across it.</small></div><select id="preset" aria-label="Example graphs"><option value="">Examples…</option></select></header>
 <div class="toolbar"><div id="tools"><button data-tool="draw" class="active">Draw</button><button data-tool="segment">Segment</button><button data-tool="point">Point</button><button data-tool="move">Move</button><button data-tool="erase">Erase</button></div><button id="undo">Undo</button><button id="clear">Clear</button><span class="spacer"></span><button id="edit" disabled>Edit graph</button><button class="primary" id="run">▶ Run</button><button id="pause" disabled>Pause</button><button id="replay" disabled>Replay</button></div>
 <div class="stage"><canvas id="canvas" aria-label="Graph drawing and animated playback area"></canvas><div class="hud" id="hud">Draw a path</div></div>
 <div class="foot"><div id="hint">Drag to draw a curve. Leave empty space to create a break.</div><div id="timeline"><input type="range" id="seek" disabled min="0" max="1000" value="0" aria-label="Animation timeline"><span class="status" id="clock"></span></div><label><input id="grid" type="checkbox" checked> Grid</label><label><input id="snap" type="checkbox"> Snap to grid</label></div><div id="chips" class="chips" hidden></div><p class="note" hidden>The same coordinate plane is used for drawing and playback. Graph segments and isolated points remain unchanged during animation. Jumps and falls are character movements, not graph connections. Paths are traversed from their leftmost starting component; reverse-directed strokes are normalized by their endpoints. Undo restores the previous edit.</p></main>
@@ -57,8 +57,9 @@ const E=(function engine(){
     }
     if(type==="struggle"||type==="climb")fatigue=Math.min(1,fatigue+len*.12);
     const speed={run:3.05,struggle:2.95,climb:2.45,downhill:3.22,slide:3.65}[type];
-    const anticipate=!!next&&dist(last,next.pts[0])>.1&&total-lengths[i-1]<1.1;
-    add(type,a,b,len/speed,{ang,anticipate});
+    const approaching=!!next&&dist(last,next.pts[0])>.1;
+    const remaining=total-lengths[i-1];
+    add(type,a,b,len/speed,{ang,approaching,remaining,len});
    }
   }
   if(s.end==="asymptote"){hold("slip",last,.22);fail(last,"Asymptote: no landing",.28);break}
@@ -72,7 +73,7 @@ const E=(function engine(){
   else{const end=p(last.x+Math.min(2.65,Math.max(.55,dx*.52)),last.y-.95);add("miss",last,end,.8,{arc:1.35});fail(end,"Gap is out of reach",.85);break}
  }
  // Group adjacent locomotion clips into acting beats, preserving the exact graph geometry.
- for(let i=0;i<clips.length;){let j=i+1;while(j<clips.length&&clips[j].type===clips[i].type)j++;const start=clips[i].t,end=clips[j-1].t+clips[j-1].d;for(let k=i;k<j;k++){clips[k].beatStart=start;clips[k].beatEnd=end;clips[k].index=k}i=j}
+ for(let i=0;i<clips.length;){let j=i+1;while(j<clips.length&&clips[j].type===clips[i].type)j++;const start=clips[i].t,end=clips[j-1].t+clips[j-1].d;for(let k=i;k<j;k++){clips[k].beatStart=start;clips[k].beatEnd=end;clips[k].index=k;clips[k].previousBeat=i?clips[i-1].type:null}i=j}
  return {clips,time,failed};
  }
  function sample(script,t){
@@ -80,7 +81,8 @@ const E=(function engine(){
    const c=script.clips.find(c=>t<c.t+c.d)||script.clips[script.clips.length-1],u=clamp((t-c.t)/c.d,0,1);
    let q=mix(c.a,c.b,c.type==="fall"?u*u:u);
    if(c.arc)q.y+=4*c.arc*u*(1-u);
-   return {...q,type:c.type,u,ang:c.ang||0,reason:c.reason||"",t,clip:c,prev:script.clips[(c.index??0)-1],next:script.clips[(c.index??0)+1]};
+   const anticipation=c.approaching?clamp((1.6-(c.remaining-c.len*u))/1.2,0,1):0;
+   return {...q,type:c.type,u,ang:c.ang||0,reason:c.reason||"",t,clip:c,anticipation,prev:script.clips[(c.index??0)-1],next:script.clips[(c.index??0)+1]};
  }
  return {p,dist,clamp,mix,simplify,presets,plan,sample};
 })();const {p,dist,clamp,mix,simplify,presets,plan,sample}=E;
@@ -123,8 +125,8 @@ function ellipse(x,y,rx,ry,c,angle=0){ctx.save();ctx.translate(x,y);ctx.rotate(a
 function inkPath(points,color="#493c38",width=1.4){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();points.forEach((a,i)=>i?ctx.lineTo(a[0],a[1]):ctx.moveTo(a[0],a[1]));ctx.stroke()}
 function pose(q,type){const u=q.u,t=q.t,falling=type==="fall"||type==="miss"||type==="realize",sliding=type==="slide",effort=type==="struggle"||type==="climb"||type==="splat";
  const run=["run","struggle","downhill","climb"].includes(type),a=Math.sin(t*13),b=Math.cos(t*13),jump=type==="jump"||type==="miss",wobble=type==="wobble";
- const crouch=type==="prepare"?Math.sin(u*Math.PI/2):type==="land"?Math.sin(Math.PI*u):type==="relief"?.45+.15*Math.sin(t*7):0;
- let lean=type==="climb"?.32:type==="struggle"?.18:type==="downhill"?-.14:sliding?-.52:wobble?Math.sin(u*5*Math.PI)*.16:falling?Math.sin(t*6)*.25:0;
+ const crouch=type==="prepare"?Math.sin(u*Math.PI/2):type==="land"?Math.sin(Math.PI*Math.pow(u,.65)):type==="relief"?.45+.15*Math.sin(t*7):0;
+ let lean=type==="climb"?.32:type==="struggle"?.18:type==="downhill"?-.14:sliding?-.52:wobble?Math.sin(u*5*Math.PI)*.31*(1-u):falling?Math.sin(t*6)*.25:0;
 
  const hip=[0,-38+13*crouch],shoulder=[0,-83+15*crouch],head=[4,-112+15*crouch];
  if(sliding){hip[0]=-8;hip[1]=-22;shoulder[0]=-12;shoulder[1]=-66;head[0]=-11;head[1]=-94}
@@ -137,21 +139,26 @@ function pose(q,type){const u=q.u,t=q.t,falling=type==="fall"||type==="miss"||ty
  const arm=run?b*14:0;let e1=[-19,-60+arm],h1=[-12-arm,-49+arm],e2=[18,-62-arm],h2=[23+arm,-50-arm];
  if(type==="climb"){e1=[20,-85];h1=[32,-100-8*a];e2=[25,-61];h2=[40,-77+8*a]}
  if(jump||falling||type==="celebrate"){const wave=falling?Math.sin(t*20)*13:0;e1=[-22,-94+wave];h1=[-33,-112+wave];e2=[23,-94-wave];h2=[33,-112-wave]}
- if(wobble||type==="slip"){e1=[-27,-77];h1=[-43,-84-6*a];e2=[29,-77];h2=[44,-84+6*a]}
+ if(wobble||type==="slip"){const swing=wobble?Math.sin(u*5*Math.PI)*(1-u)*19:12*a;e1=[-27,-77+swing*.4];h1=[-43,-84-swing];e2=[29,-77-swing*.4];h2=[44,-84+swing]}
  if(sliding){e1=[-33,-51];h1=[-39,-33];e2=[19,-44];h2=[26,-30]}
- if(q.clip.anticipate&&run){e2=[25,-84];h2=[42,-91]}if(type==="relief"){e1=[-18,-40];h1=[-12,-26];e2=[18,-40];h2=[12,-26]}if(type==="splat"||type==="peel"){e1=[-19,-93];h1=[-18,-115];e2=[22,-90];h2=[31,-113]}
+ if(q.anticipation&&run){const w=q.anticipation*q.anticipation;e2=e2.map((x,i)=>x+([25,-84][i]-x)*w);h2=h2.map((x,i)=>x+([42,-91][i]-x)*w)}if(type==="relief"){e1=[-18,-40];h1=[-12,-26];e2=[18,-40];h2=[12,-26]}if(type==="splat"||type==="peel"){e1=[-19,-93];h1=[-18,-115];e2=[22,-90];h2=[31,-113]}
  return {hip,shoulder,head,f1,f2,k1,k2,e1,e2,h1,h2,lean};
 }
 function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t,falling=["fall","miss","realize"].includes(type),sliding=type==="slide",effort=["struggle","climb","splat"].includes(type);
  const locomotion=new Set(["run","struggle","downhill","climb","slide"]),P=pose(q,type),smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x)};
  // Blend acting beats, not every tiny segment. Impact holds intentionally retain their snap.
- if(q.prev&&locomotion.has(type)&&locomotion.has(q.prev.type)&&q.prev.type!==type){const w=smooth((t-q.clip.beatStart)/.18),A=pose({...q,u:1},q.prev.type);for(const k of Object.keys(P))P[k]=Array.isArray(P[k])?P[k].map((x,i)=>A[k][i]+(x-A[k][i])*w):A[k]+(P[k]-A[k])*w}
+ const blend=(A,w)=>{for(const k of Object.keys(P))P[k]=Array.isArray(P[k])?P[k].map((x,i)=>A[k][i]+(x-A[k][i])*w):A[k]+(P[k]-A[k])*w};
+ const blendable=type!=="splat"&&type!=="realize"&&type!=="fall";
+ const previous=q.clip.previousBeat;
+ if(previous&&blendable){const duration=Math.min(.20,(q.clip.beatEnd-q.clip.beatStart)*.55);const w=smooth((t-q.clip.beatStart)/duration);if(w<1)blend(pose({...q,u:1,anticipation:0},previous),w)}
  const {hip,shoulder,head,f1,f2,k1,k2,e1,e2,h1,h2,lean}=P;
  // Plant the support foot at the graph contact point; slope is conveyed by body acting.
  const size=clamp(S/76,.30,.65),rot=type==="splat"?-Math.abs(q.ang)*.55:type==="peel"?-Math.abs(q.ang)*.55*(1-u):lean;
  const sx=type==="splat"?.63:type==="peel"?.63+.37*u:1,sy=type==="splat"?1.04:1;
  const ground=locomotion.has(type)||["ready","prepare","land","wobble","relief","celebrate","look","slip"].includes(type);
- const foot=type==="wobble"?f1:(f1[1]>=f2[1]?f1:f2),fx=(foot[0]+6)*sx,fy=(foot[1]+3)*sy;
+ // Soft transfer between support feet prevents sudden sideways snapping.
+ const support=type==="wobble"?1:clamp(.5+(f1[1]-f2[1])/8,0,1);
+ const foot=[f1[0]*support+f2[0]*(1-support),Math.max(f1[1],f2[1])],fx=(foot[0]+6)*sx,fy=(foot[1]+3)*sy;
  ctx.save();ctx.translate(v.x,v.y);ctx.scale(size,size);if(ground)ctx.translate(-(fx*Math.cos(rot)-fy*Math.sin(rot)),-(fx*Math.sin(rot)+fy*Math.cos(rot)));ctx.rotate(rot);ctx.scale(sx,sy);
  function leg(k,f){limb(hip,k,16,"#dcb084");limb(k,f,12,"#e7b88b");limb([f[0],f[1]-8],[f[0],f[1]-2],10,"#f7f2e6");ellipse(f[0]+6,f[1]-2,12,5,"#555e6a");inkPath([[f[0]-4,f[1]+1],[f[0]+17,f[1]+1]],"#303b45",1.4)}
  function armDraw(e,h,x){limb([shoulder[0]+x,shoulder[1]],e,13,"#dba97e");limb(e,h,10,"#e6b88b");ellipse(h[0],h[1],6,6,"#e4ad80")}
@@ -184,7 +191,7 @@ function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t,falling=["fall","mi
  // Beard strands and ink hatching
  for(let i=0;i<10;i++){let a=i*.62;let bx=head[0]-9+i*3.0,by=head[1]+19+Math.sin(a)*5;inkPath([[bx,by],[bx+1,by+3]],i%2?'#b5aaa0':'#423e3b',.65)}
  if(effort||q.clip.fatigue>.6){ctx.fillStyle="#58a9c9";for(let i=0;i<3;i++){let z=(t*2+i/3)%1;ellipse(head[0]-22-z*18,head[1]-11-z*9,2.5,4,"#58a9c9",-.5)}}
- if(q.clip.anticipate||type==="realize"){inkPath([[28,-143],[34,-157]],"#c89028",3);inkPath([[39,-140],[49,-149]],"#c89028",3)}
+ if(q.anticipation>.65||type==="realize"){inkPath([[28,-143],[34,-157]],"#c89028",3);inkPath([[39,-140],[49,-149]],"#c89028",3)}
  ctx.restore();
  if(type==="slide"||type==="land"){ctx.save();ctx.globalAlpha=type==="land"?Math.sin(Math.PI*u)*.55:.45;for(let i=0;i<4;i++){const z=(t*3+i*.22)%1;ellipse(v.x-8-z*24,v.y-3-z*6,3+z*5,2+z*3,"#b6aa98")}ctx.restore()}
  if(type==="peel"){ctx.save();for(let i=0;i<3;i++){const a=t*6+i*2.094;const x=v.x+Math.cos(a)*19,y=v.y-55+Math.sin(a)*7;ctx.strokeStyle="#d6a33b";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x+3,y);ctx.moveTo(x,y-3);ctx.lineTo(x,y+3);ctx.stroke()}ctx.restore()}
