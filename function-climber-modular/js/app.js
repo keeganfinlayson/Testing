@@ -17,20 +17,20 @@ const E=(function engine(){
  slide:{name:"Runaway descent",paths:[{pts:[p(-9,4),p(-5,4),p(-2,-2),p(2,-4),p(9,-4)]}]},
  gap:{name:"Jumpable break",paths:[{pts:[p(-9,-1),p(-3,-1)]},{pts:[p(-.8,-.2),p(3,-.2),p(9,1)]}]},
  miss:{name:"Unreachable break",paths:[{pts:[p(-9,0),p(-4,0)]},{pts:[p(2,1),p(9,1)]}]},
- asym:{name:"Vertical asymptote",asymptotes:[0],paths:[{end:"asymptote",pts:Array.from({length:97},(_,i)=>{const x=-9+i*8.8/96;return p(x,1/x-1)})},{pts:Array.from({length:97},(_,i)=>{const x=.2+i*8.8/96;return p(x,1/x-1)})}]},
+ asym:{name:"Vertical asymptote",asymptotes:[0],paths:[{end:"asymptote",pts:Array.from({length:97},(_,i)=>{const x=-9+i*8.92/96;return p(x,1/x-1)})},{pts:Array.from({length:97},(_,i)=>{const x=.08+i*8.92/96;return p(x,1/x-1)})}]},
  corner:{name:"Corner collision",paths:[{pts:[p(-9,4),p(-2,-4),p(0,3),p(8,3)]}]},
  points:{name:"Stepping stones",paths:[{pts:[p(-8,-2)]},{pts:[p(-5.7,0)]},{pts:[p(-3.2,-1)]},{pts:[p(-.8,.7)]},{pts:[p(1.7,0)]},{pts:[p(4.2,1.5)]},{pts:[p(6.7,.2)]}]},
  stairs:{name:"Staircase",paths:[{pts:[p(-9,-4),p(-5,-4)]},{pts:[p(-5,-2),p(-1,-2)]},{pts:[p(-1,0),p(3,0)]},{pts:[p(3,2),p(8,2)]}]},
  vertical:{name:"Vertical climb",paths:[{pts:[p(-8,-3),p(-2,-3),p(-2,3),p(8,3)]}]}
  };
- function plan(paths){
+ function plan(paths,view={left:-10.5,bottom:-8,top:8}){
  const items=paths.filter(s=>s.pts.length).map(s=>({...s,pts:s.pts.slice()})).map(s=>{if(s.pts[0].x>s.pts.at(-1).x+.01){s.pts.reverse();[s.start,s.end]=[s.end,s.start]}return s}).sort((a,b)=>a.pts[0].x-b.pts[0].x||a.pts[0].y-b.pts[0].y);
  const clips=[];let time=0,failed=false,fatigue=0,mishaps=0;
  const add=(type,a,b,d,extra={})=>{d=Math.max(.035,d);clips.push({type,a,b,t:time,d,fatigue,mishaps,...extra});time+=d};
  const hold=(type,a,d,extra)=>add(type,a,a,d,extra);
  const fail=(a,reason,dx=1)=>{hold("realize",a,.24);add("fall",a,p(a.x+dx,a.y-12),1.35,{reason});failed=true};
  if(!items.length)return {clips,time,failed};
- hold("ready",items[0].pts[0],.38);
+ const first=items[0].pts[0];const entry=p(Math.min(view.left-3,first.x-3),first.y);add("run",entry,first,dist(entry,first)/3.05,{ang:0});
  for(let j=0;j<items.length;j++){
   const s=items[j],pts=s.pts.filter((q,i,a)=>i===0||dist(q,a[i-1])>1e-5),last=pts.at(-1),next=items[j+1];
   if(pts.length===1){hold("wobble",pts[0],.75+Math.min(.28,mishaps*.07));}
@@ -70,7 +70,7 @@ const E=(function engine(){
     add(type,a,b,len/speed,{ang,approaching,remaining,len});
    }
   }
-  if(s.end==="asymptote"){hold("slip",last,.22);fail(last,"Asymptote: no landing",.28);break}
+  if(s.end==="asymptote"){hold("slip",last,.22);if(!next){fail(last,"Asymptote: no landing",.28);break}const target=next.pts[0];const exit=p(last.x,Math.min(view.bottom-5,last.y-3));const entry=p(target.x,Math.max(view.top+5,target.y+3));add("fall",last,exit,.95);add("fall",entry,target,1.05);hold("land",target,.24);continue}
   if(!next){hold(fatigue>.5||mishaps>0?"relief":"celebrate",last,1.05);break}
   const b=next.pts[0],dx=b.x-last.x,dy=b.y-last.y,gap=dist(last,b);
   if(gap<.10)continue;
@@ -121,7 +121,7 @@ function loadPreset(key){if(!presets[key])return;edit();snapshot();paths=clone(p
 $("preset").onchange=()=>loadPreset($("preset").value);
 function ui(){const play=mode==="play";document.querySelectorAll("[data-tool]").forEach(b=>b.disabled=play);$("undo").disabled=play||!history.length;$("clear").disabled=play;$("run").disabled=play;$("edit").disabled=!play;$("pause").disabled=!play;$("replay").disabled=!play;$("timeline").classList.toggle("show",play);$("seek").disabled=!play;$("snap").disabled=play;$("chips").hidden=!play||!$("beats").checked;canvas.style.cursor=play?"default":"crosshair"}
 function edit(){playing=false;mode="edit";drag=null;script=null;$("seek").value=0;$("clock").textContent="";$("chips").replaceChildren();$("hint").textContent=hints[tool];ui();render()}
-function start(){if(!paths.length){$("hint").textContent="Draw a path or select an example first.";return}script=plan(paths);if(!script.clips.length)return;mode="play";elapsed=0;playing=true;$("pause").textContent="Pause";$("hint").textContent="";ui();buildChips();render()}
+function start(){if(!paths.length){$("hint").textContent="Draw a path or select an example first.";return}script=plan(paths,{left:cam.x-W/(2*S),bottom:cam.y-H/(2*S),top:cam.y+H/(2*S)});if(!script.clips.length)return;mode="play";elapsed=0;playing=true;$("pause").textContent="Pause";$("hint").textContent="";ui();buildChips();render()}
 $("run").onclick=start;$("edit").onclick=edit;$("replay").onclick=start;$("pause").onclick=()=>{if(elapsed>=script.time)elapsed=0;playing=!playing;$("pause").textContent=playing?"Pause":"Play"};$("seek").oninput=()=>{if(!script)return;elapsed=script.time*(+$("seek").value/1000);playing=false;$("pause").textContent="Play";render()};$("grid").onchange=render;$("beats").onchange=()=>{$("chips").hidden=!($("beats").checked&&mode==="play")};
 function buildChips(){const el=$("chips");el.replaceChildren();let prior=null;script.clips.forEach(c=>{if(c.type!==prior){const span=document.createElement("span");span.className="chip";span.textContent=labels[c.type];span.dataset.start=c.t;el.append(span);prior=c.type}})}
 function line(a,b,color,width=1){const A=screen(a),B=screen(b);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke()}
@@ -160,8 +160,8 @@ function pose(q,type){const u=q.u,t=q.t,falling=type==="fall"||type==="miss"||ty
 }
 const runAtlas=new Image();runAtlas.src="assets/character/run-atlas.png";runAtlas.onload=()=>render();
 const movementAtlas=new Image(),movementFrames=[];movementAtlas.onload=()=>{for(let i=0;i<16;i++){const x=Math.round(i%4*movementAtlas.width/4),y=Math.round(Math.floor(i/4)*movementAtlas.height/4),w=Math.round((i%4+1)*movementAtlas.width/4)-x,h=Math.round((Math.floor(i/4)+1)*movementAtlas.height/4)-y;const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");g.drawImage(movementAtlas,x,y,w,h,0,0,w,h);const d=g.getImageData(0,0,w,h).data;let l=w,r=0,t=h,b=0;for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)if(d[(yy*w+xx)*4+3]>150){l=Math.min(l,xx);r=Math.max(r,xx);t=Math.min(t,yy);b=Math.max(b,yy)}if(r>l&&b>t)movementFrames[i]={c,l,t,w:r-l+1,h:b-t+1}}render()};movementAtlas.src="assets/character/movement-atlas.png";
-function illustratedMovement(q,v){const t=q.t,u=clamp(q.u,0,1),type=q.type;let i=-1;if(type==="struggle")i=Math.floor(t*10)%4;else if(type==="downhill")i=4+Math.floor(t*10)%4;else if(type==="ready")i=8;else if(type==="prepare")i=8+Math.min(3,Math.floor(u*4));else if(type==="jump"||type==="miss")i=12+Math.min(2,Math.floor(u*3));else if(type==="land")i=[14,15,15,9,8][Math.min(4,Math.floor(u*5))];const f=movementFrames[i];if(!f)return false;const k=clamp(S/76,.30,.65),height=([9,10,13,15].includes(i)?100:132)*k,scale=height/f.h;ctx.drawImage(f.c,f.l,f.t,f.w,f.h,v.x-f.w*scale/2,v.y-height,f.w*scale,height);return true}
-function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedMovement(q,v))return;if(type==="run"&&runAtlas.complete&&runAtlas.naturalWidth){const i=Math.floor(t*12)%8,w=112,h=140,k=clamp(S/76,.30,.65),lift=(i%4===3?5:0)*k;ctx.drawImage(runAtlas,(i%4)*w,Math.floor(i/4)*h,w,h,v.x-w*k/2,v.y-136*k-lift,w*k,h*k);return}const falling=["fall","miss","realize"].includes(type),sliding=type==="slide",effort=["struggle","climb","splat"].includes(type);
+function illustratedMovement(q,v){const t=q.t,u=clamp(q.u,0,1),type=q.type;let i=-1;if(type==="struggle")i=Math.floor(t*10)%4;else if(type==="downhill")i=4+Math.floor(t*10)%4;else if(type==="ready")i=8;else if(type==="prepare")i=8+Math.min(3,Math.floor(u*4));else if(type==="jump"||type==="miss")i=12+Math.min(2,Math.floor(u*3));else if(type==="land")i=[14,15,15,9,8][Math.min(4,Math.floor(u*5))];const f=movementFrames[i];if(!f)return false;const k=1.85*clamp(S/76,.30,.65),height=([9,10,13,15].includes(i)?100:132)*k,scale=height/f.h;ctx.drawImage(f.c,f.l,f.t,f.w,f.h,v.x-f.w*scale/2,v.y-height,f.w*scale,height);return true}
+function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedMovement(q,v))return;if(type==="run"&&runAtlas.complete&&runAtlas.naturalWidth){const i=Math.floor(t*12)%8,w=112,h=140,k=1.85*clamp(S/76,.30,.65),lift=(i%4===3?5:0)*k;ctx.drawImage(runAtlas,(i%4)*w,Math.floor(i/4)*h,w,h,v.x-w*k/2,v.y-136*k-lift,w*k,h*k);return}const falling=["fall","miss","realize"].includes(type),sliding=type==="slide",effort=["struggle","climb","splat"].includes(type);
  const locomotion=new Set(["run","struggle","downhill","climb","slide"]),P=pose(q,type),smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x)};
  // Blend acting beats, not every tiny segment. Impact holds intentionally retain their snap.
  const blend=(A,w)=>{for(const k of Object.keys(P))P[k]=Array.isArray(P[k])?P[k].map((x,i)=>A[k][i]+(x-A[k][i])*w):A[k]+(P[k]-A[k])*w};
@@ -170,7 +170,7 @@ function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedMovem
  if(previous&&blendable){const duration=Math.min(.20,(q.clip.beatEnd-q.clip.beatStart)*.55);const w=smooth((t-q.clip.beatStart)/duration);if(w<1)blend(pose({...q,u:1,anticipation:0},previous),w)}
  const {hip,shoulder,head,f1,f2,k1,k2,e1,e2,h1,h2,lean}=P;
  // Plant the support foot at the graph contact point; slope is conveyed by body acting.
- const size=clamp(S/76,.30,.65),rot=type==="fall"?u*Math.PI*1.75:type==="splat"?-Math.abs(q.ang)*.55:type==="peel"?-Math.abs(q.ang)*.55*(1-u):lean;
+ const size=1.85*clamp(S/76,.30,.65),rot=type==="fall"?u*Math.PI*1.75:type==="splat"?-Math.abs(q.ang)*.55:type==="peel"?-Math.abs(q.ang)*.55*(1-u):lean;
  const sx=type==="splat"?.63:type==="peel"?.63+.37*u:type==="brace"?1.09:type==="recover"?1.09-.09*u:1,sy=type==="splat"?1.04:1;
  const ground=locomotion.has(type)||["ready","prepare","land","wobble","relief","celebrate","look","slip","crest","brace","recover"].includes(type);
  // Soft transfer between support feet prevents sudden sideways snapping.
