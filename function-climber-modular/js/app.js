@@ -70,7 +70,7 @@ const E=(function engine(){
     add(type,a,b,len/speed,{ang,approaching,remaining,len});
    }
   }
-  if(s.end==="asymptote"){hold("slip",last,.22);if(!next){fail(last,"Asymptote: no landing",.28);break}const target=next.pts[0];const exit=p(last.x,Math.min(view.bottom-5,last.y-3));const entry=p(target.x,Math.max(view.top+5,target.y+3));add("fall",last,exit,.95);add("fall",entry,target,1.05);hold("land",target,.24);continue}
+  if(s.end==="asymptote"){hold("slip",last,.22);if(!next){fail(last,"Asymptote: no landing",.28);break}const target=next.pts[0];const exit=p(last.x,Math.min(view.bottom-5,last.y-3));const entry=p(target.x,Math.max(view.top+5,target.y+3));add("fall",last,exit,.95);add("fall",entry,target,1.05);hold("faceplant",target,.48);hold("getup",target,.72);mishaps++;continue}
   if(!next){hold(fatigue>.5||mishaps>0?"relief":"celebrate",last,1.05);break}
   const b=next.pts[0],dx=b.x-last.x,dy=b.y-last.y,gap=dist(last,b);
   if(gap<.10)continue;
@@ -96,7 +96,7 @@ const E=(function engine(){
 })();const {p,dist,clamp,mix,simplify,presets,plan,sample}=E;
 const $=id=>document.getElementById(id),canvas=$("canvas"),ctx=canvas.getContext("2d");
 let paths=[],asymptotes=[],history=[],tool="draw",mode="edit",drag=null,script=null,elapsed=0,playing=false,W=1000,H=600,S=45,cam=p(0,0),lastTime=0,phase=0;
-const labels={ready:"Ready",run:"Running",struggle:"Uphill struggle",downhill:"Downhill run",slide:"Sliding",climb:"Climbing",crest:"Cresting the hill",brace:"Bracing for descent",recover:"Regaining balance",prepare:"Preparing to jump",jump:"Jumping",miss:"Missed jump",land:"Landing",wobble:"Balancing",splat:"Splat!",peel:"Recovering",slip:"Losing grip",fall:"Falling",celebrate:"Made it!",look:"Looking for the path",realize:"Uh-oh!",relief:"Made it… whew!"};
+const labels={faceplant:"Face-first landing!",getup:"Getting back up",ready:"Ready",run:"Running",struggle:"Uphill struggle",downhill:"Downhill run",slide:"Sliding",climb:"Climbing",crest:"Cresting the hill",brace:"Bracing for descent",recover:"Regaining balance",prepare:"Preparing to jump",jump:"Jumping",miss:"Missed jump",land:"Landing",wobble:"Balancing",splat:"Splat!",peel:"Recovering",slip:"Losing grip",fall:"Falling",celebrate:"Made it!",look:"Looking for the path",realize:"Uh-oh!",relief:"Made it… whew!"};
 const clone=v=>JSON.parse(JSON.stringify(v));const hints={draw:"Drag to draw a curve. Leave empty space to create a break.",segment:"Drag from one endpoint to another to create a straight segment.",point:"Click to place an isolated point.",move:"Drag a point or an entire connected stroke.",erase:"Drag across the graph to erase parts of the path."};
 function snapshot(){history.push(clone({paths,asymptotes}));if(history.length>60)history.shift();$("undo").disabled=false}
 function undo(){if(!history.length)return;const a=history.pop();paths=a.paths;asymptotes=a.asymptotes;$("undo").disabled=!history.length;render()}
@@ -170,13 +170,13 @@ function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedMovem
  if(previous&&blendable){const duration=Math.min(.20,(q.clip.beatEnd-q.clip.beatStart)*.55);const w=smooth((t-q.clip.beatStart)/duration);if(w<1)blend(pose({...q,u:1,anticipation:0},previous),w)}
  const {hip,shoulder,head,f1,f2,k1,k2,e1,e2,h1,h2,lean}=P;
  // Plant the support foot at the graph contact point; slope is conveyed by body acting.
- const size=1.85*clamp(S/76,.30,.65),rot=type==="fall"?u*Math.PI*1.75:type==="splat"?-Math.abs(q.ang)*.55:type==="peel"?-Math.abs(q.ang)*.55*(1-u):lean;
+ const size=1.85*clamp(S/76,.30,.65),rot=type==="faceplant"?Math.PI/2:type==="getup"?Math.PI/2*(1-u):type==="fall"?u*Math.PI*1.75:type==="splat"?-Math.abs(q.ang)*.55:type==="peel"?-Math.abs(q.ang)*.55*(1-u):lean;
  const sx=type==="splat"?.63:type==="peel"?.63+.37*u:type==="brace"?1.09:type==="recover"?1.09-.09*u:1,sy=type==="splat"?1.04:1;
- const ground=locomotion.has(type)||["ready","prepare","land","wobble","relief","celebrate","look","slip","crest","brace","recover"].includes(type);
+ const ground=locomotion.has(type)||["faceplant","getup","ready","prepare","land","wobble","relief","celebrate","look","slip","crest","brace","recover"].includes(type);
  // Soft transfer between support feet prevents sudden sideways snapping.
  const support=type==="wobble"?1:clamp(.5+(f1[1]-f2[1])/8,0,1);
  const foot=[f1[0]*support+f2[0]*(1-support),Math.max(f1[1],f2[1])],fx=(foot[0]+6)*sx,fy=(foot[1]+3)*sy;
- ctx.save();ctx.translate(v.x,v.y);ctx.scale(size,size);if(ground)ctx.translate(-(fx*Math.cos(rot)-fy*Math.sin(rot)),-(fx*Math.sin(rot)+fy*Math.cos(rot)));ctx.rotate(rot);ctx.scale(sx,sy);
+ ctx.save();ctx.translate(v.x,v.y);ctx.scale(size,size);if(ground)ctx.translate(-(fx*Math.cos(rot)-fy*Math.sin(rot)),-(fx*Math.sin(rot)+fy*Math.cos(rot)));if(type==="faceplant"||type==="getup"){const w=type==="faceplant"?1:1-u;ctx.translate(-65*size*w,-23*size*w)}ctx.rotate(rot);ctx.scale(sx,sy);
  function leg(k,f){limb(hip,k,16,"#dcb084");limb(k,f,12,"#e7b88b");limb([f[0],f[1]-8],[f[0],f[1]-2],10,"#f7f2e6");ellipse(f[0]+6,f[1]-2,12,5,"#555e6a");inkPath([[f[0]-4,f[1]+1],[f[0]+17,f[1]+1]],"#303b45",1.4)}
  function armDraw(e,h,x){limb([shoulder[0]+x,shoulder[1]],e,13,"#dba97e");limb(e,h,10,"#e6b88b");ellipse(h[0],h[1],6,6,"#e4ad80")}
  leg(k1,f1);armDraw(e1,h1,-10);ellipse(hip[0],hip[1]+2,19,14,"#cba978");leg(k2,f2);ctx.fillStyle="#344967";ctx.strokeStyle="#253b54";ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(shoulder[0]-17,shoulder[1]-6);ctx.quadraticCurveTo(shoulder[0],shoulder[1]-15,shoulder[0]+17,shoulder[1]-5);ctx.lineTo(hip[0]+19,hip[1]+4);ctx.lineTo(hip[0]-19,hip[1]+4);ctx.closePath();ctx.fill();ctx.stroke();armDraw(e2,h2,10);
