@@ -174,7 +174,18 @@ function illustratedActing(q,v){
  ctx.drawImage(actingAtlas,(i%8)*256,Math.floor(i/8)*256,256,256,v.x-128*k,v.y-235*k,256*k,256*k);
  return true;
 }
-function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedActing(q,v)||illustratedMovement(q,v))return;if(type==="run"&&runAtlas.complete&&runAtlas.naturalWidth){const i=Math.floor(t*12)%8,w=112,h=140,k=1.85*clamp(S/76,.30,.65),lift=(i%4===3?5:0)*k;ctx.drawImage(runAtlas,(i%4)*w,Math.floor(i/4)*h,w,h,v.x-w*k/2,v.y-136*k-lift,w*k,h*k);return}const falling=["fall","miss","realize"].includes(type),sliding=type==="slide",effort=["struggle","climb","splat"].includes(type);
+const transitionAtlas=new Image();
+transitionAtlas.onload=()=>render();
+transitionAtlas.src="../function-runner-transition-atlas.png";
+const transitionSequences={crest:0,brace:4,slip:8,recover:12,relief:16,realize:8,look:4};
+function illustratedTransition(q,v){
+ const start=transitionSequences[q.type];if(start===undefined||!transitionAtlas.complete||transitionAtlas.naturalWidth!==1024||transitionAtlas.naturalHeight!==1280)return false;
+ const i=start+Math.min(3,Math.floor(clamp(q.u,0,1)*4));
+ const k=1.85*clamp(S/76,.30,.65)*.65;
+ ctx.drawImage(transitionAtlas,(i%4)*256,Math.floor(i/4)*256,256,256,v.x-128*k,v.y-235*k,256*k,256*k);
+ return true;
+}
+function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedTransition(q,v)||illustratedActing(q,v)||illustratedMovement(q,v))return;if(type==="run"&&runAtlas.complete&&runAtlas.naturalWidth){const i=Math.floor(t*12)%8,w=112,h=140,k=1.85*clamp(S/76,.30,.65),lift=(i%4===3?5:0)*k;ctx.drawImage(runAtlas,(i%4)*w,Math.floor(i/4)*h,w,h,v.x-w*k/2,v.y-136*k-lift,w*k,h*k);return}const falling=["fall","miss","realize"].includes(type),sliding=type==="slide",effort=["struggle","climb","splat"].includes(type);
  const locomotion=new Set(["run","struggle","downhill","climb","slide"]),P=pose(q,type),smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x)};
  // Blend acting beats, not every tiny segment. Impact holds intentionally retain their snap.
  const blend=(A,w)=>{for(const k of Object.keys(P))P[k]=Array.isArray(P[k])?P[k].map((x,i)=>A[k][i]+(x-A[k][i])*w):A[k]+(P[k]-A[k])*w};
