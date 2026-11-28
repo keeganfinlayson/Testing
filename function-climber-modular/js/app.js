@@ -161,7 +161,20 @@ function pose(q,type){const u=q.u,t=q.t,falling=type==="fall"||type==="miss"||ty
 const runAtlas=new Image();runAtlas.src="assets/character/run-atlas.png";runAtlas.onload=()=>render();
 const movementAtlas=new Image(),movementFrames=[];movementAtlas.onload=()=>{for(let i=0;i<16;i++){const x=Math.round(i%4*movementAtlas.width/4),y=Math.round(Math.floor(i/4)*movementAtlas.height/4),w=Math.round((i%4+1)*movementAtlas.width/4)-x,h=Math.round((Math.floor(i/4)+1)*movementAtlas.height/4)-y;const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");g.drawImage(movementAtlas,x,y,w,h,0,0,w,h);const d=g.getImageData(0,0,w,h).data;let l=w,r=0,t=h,b=0;for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)if(d[(yy*w+xx)*4+3]>150){l=Math.min(l,xx);r=Math.max(r,xx);t=Math.min(t,yy);b=Math.max(b,yy)}if(r>l&&b>t)movementFrames[i]={c,l,t,w:r-l+1,h:b-t+1}}render()};movementAtlas.src="assets/character/movement-atlas.png";
 function illustratedMovement(q,v){const t=q.t,u=clamp(q.u,0,1),type=q.type;let i=-1;if(type==="struggle")i=Math.floor(t*10)%4;else if(type==="downhill")i=4+Math.floor(t*10)%4;else if(type==="ready")i=8;else if(type==="prepare")i=8+Math.min(3,Math.floor(u*4));else if(type==="jump"||type==="miss")i=12+Math.min(2,Math.floor(u*3));else if(type==="land")i=[14,15,15,9,8][Math.min(4,Math.floor(u*5))];const f=movementFrames[i];if(!f)return false;const k=1.85*clamp(S/76,.30,.65),height=([9,10,13,15].includes(i)?100:132)*k,scale=height/f.h;ctx.drawImage(f.c,f.l,f.t,f.w,f.h,v.x-f.w*scale/2,v.y-height,f.w*scale,height);return true}
-function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedMovement(q,v))return;if(type==="run"&&runAtlas.complete&&runAtlas.naturalWidth){const i=Math.floor(t*12)%8,w=112,h=140,k=1.85*clamp(S/76,.30,.65),lift=(i%4===3?5:0)*k;ctx.drawImage(runAtlas,(i%4)*w,Math.floor(i/4)*h,w,h,v.x-w*k/2,v.y-136*k-lift,w*k,h*k);return}const falling=["fall","miss","realize"].includes(type),sliding=type==="slide",effort=["struggle","climb","splat"].includes(type);
+const actingAtlas=new Image();
+actingAtlas.onload=()=>render();
+actingAtlas.src="../function-runner-animation-atlas.png";
+const actingSequences={wobble:[0,8,false],celebrate:[8,7,false],relief:[8,7,false],climb:[15,7,true],splat:[22,2,false],peel:[24,2,false],faceplant:[26,2,false],fall:[28,4,true],getup:[32,6,false],slide:[38,8,true],brace:[38,2,false],recover:[44,2,false]};
+function illustratedActing(q,v){
+ const seq=actingSequences[q.type];if(!seq||!actingAtlas.complete||actingAtlas.naturalWidth!==2048||actingAtlas.naturalHeight!==1536)return false;
+ const [start,count,loop]=seq;
+ const progress=clamp((q.t-q.clip.beatStart)/(q.clip.beatEnd-q.clip.beatStart||1),0,1);
+ const i=start+(loop?Math.floor((q.t-q.clip.beatStart)*10)%count:Math.min(count-1,Math.floor(progress*count)));
+ const k=1.85*clamp(S/76,.30,.65)*.65;
+ ctx.drawImage(actingAtlas,(i%8)*256,Math.floor(i/8)*256,256,256,v.x-128*k,v.y-235*k,256*k,256*k);
+ return true;
+}
+function runner(q){const v=screen(q),type=q.type,u=q.u,t=q.t;if(illustratedActing(q,v)||illustratedMovement(q,v))return;if(type==="run"&&runAtlas.complete&&runAtlas.naturalWidth){const i=Math.floor(t*12)%8,w=112,h=140,k=1.85*clamp(S/76,.30,.65),lift=(i%4===3?5:0)*k;ctx.drawImage(runAtlas,(i%4)*w,Math.floor(i/4)*h,w,h,v.x-w*k/2,v.y-136*k-lift,w*k,h*k);return}const falling=["fall","miss","realize"].includes(type),sliding=type==="slide",effort=["struggle","climb","splat"].includes(type);
  const locomotion=new Set(["run","struggle","downhill","climb","slide"]),P=pose(q,type),smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x)};
  // Blend acting beats, not every tiny segment. Impact holds intentionally retain their snap.
  const blend=(A,w)=>{for(const k of Object.keys(P))P[k]=Array.isArray(P[k])?P[k].map((x,i)=>A[k][i]+(x-A[k][i])*w):A[k]+(P[k]-A[k])*w};
